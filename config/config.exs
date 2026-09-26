@@ -113,6 +113,9 @@ config :nerves_ai, :models,
     sha256: "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
   ]
 
+# Scenic's asset library (fonts); see lib/nerves_livebook_fp3/assets.ex.
+config :scenic, :assets, module: NervesLivebookFP3.Assets
+
 # First-boot F2FS grow of the /root partition (idempotent — the
 # resizer reports :already_grown once the FS fills the partition).
 # Keys and app namespace must match NervesDataResize.run/1, which

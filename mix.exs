@@ -7,6 +7,9 @@ defmodule NervesLivebookFP3.MixProject do
   # Deterministic builds — same input, same firmware bytes.
   System.put_env("ERL_COMPILER_OPTIONS", "deterministic")
 
+  # Scenic renders with Cairo straight to the framebuffer on the phone.
+  if Mix.target() != :host, do: System.put_env("SCENIC_LOCAL_TARGET", "cairo-fb")
+
   def project do
     [
       app: @app,
@@ -73,6 +76,12 @@ defmodule NervesLivebookFP3.MixProject do
 
       # Touchscreen and buttons (Linux input events)
       {:input_event, "~> 1.4"},
+
+      # Scenic UI on the screen. Pinned to the commits that compile on
+      # Elixir 1.19+, which aren't released on Hex yet.
+      {:scenic, github: "ScenicFramework/scenic", ref: "e0ae569", override: true},
+      {:scenic_driver_local,
+       github: "ScenicFramework/scenic_driver_local", ref: "9988a05", targets: :nerves_system_fp3},
 
       # ---------------- AI stack ----------------
       # nerves_ai pulls arm_ai (whose NIF builds from source with Rust),

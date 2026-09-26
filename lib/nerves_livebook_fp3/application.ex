@@ -11,7 +11,9 @@ defmodule NervesLivebookFP3.Application do
     # added by a firmware update show up), leaving attendee edits alone.
     sync_notebooks()
 
-    Supervisor.start_link([], strategy: :one_for_one, name: NervesLivebookFP3.Supervisor)
+    # Scenic's supervisor, so notebooks can start viewports on the screen.
+    children = [{Scenic, []}]
+    Supervisor.start_link(children, strategy: :one_for_one, name: NervesLivebookFP3.Supervisor)
   end
 
   defp sync_notebooks do
