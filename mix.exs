@@ -71,6 +71,9 @@ defmodule NervesLivebookFP3.MixProject do
       # ---------------- Kino (used by the notebooks) ----------------
       {:kino, "~> 0.14"},
 
+      # Touchscreen and buttons (Linux input events)
+      {:input_event, "~> 1.4"},
+
       # ---------------- AI stack ----------------
       # nerves_ai pulls arm_ai (whose NIF builds from source with Rust),
       # nx_arm, the infer_* libraries and the boot helpers.

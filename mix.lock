@@ -28,6 +28,7 @@
   "infer_audio": {:git, "https://github.com/mlainez/infer_audio.git", "abeff6080e5705be7eef75df921c0fc54a1a7f35", []},
   "infer_llm": {:git, "https://github.com/mlainez/infer_llm.git", "6e9e61d1c1cd60e5b3b26e606b7f7a09e8240312", []},
   "infer_vision": {:git, "https://github.com/mlainez/infer_vision.git", "20af05be4c429aa3098b9736ada578874176e8ba", []},
+  "input_event": {:hex, :input_event, "1.4.2", "8ad280387595110cf4ac4d92cfcfd2f5d61f7285084f35adc5feec077df23058", [:make, :mix], [{:elixir_make, "~> 0.6", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm", "eb12e3a5d83f2c570d965ad0a5de7bea7c9f387b425ae882c00f3a2a00971e3f"},
   "interactive_cmd": {:hex, :interactive_cmd, "0.1.4", "398b517b88fc0e4a7dc4ece883bf952995b859a406331626f3c94a1f680657e4", [:mix], [], "hexpm", "d2089b3827f6b21e48ac85a59441211dacda5c0702ab6f590f2117990968a571"},
   "iso8601": {:hex, :iso8601, "1.3.4", "7b1f095f86f6cf65e1e5a77872e8e8bf69bd58d4c3a415b3f77d9cc9423ecbb9", [:rebar3], [], "hexpm", "a334469c07f1c219326bc891a95f5eec8eb12dd8071a3fff56a7843cb20fae34"},
   "jason": {:hex, :jason, "1.4.5", "2e3a008590b0b8d7388c20293e9dcc9cf3e5d642fd2a114e4cbbb52e595d940a", [:mix], [{:decimal, "~> 1.0 or ~> 2.0 or ~> 3.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "b0c823996102bcd0239b3c2444eb00409b72f6a140c1950bc8b457d836b30684"},
