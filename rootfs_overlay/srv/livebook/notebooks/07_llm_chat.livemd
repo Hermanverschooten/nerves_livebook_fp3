@@ -1,0 +1,50 @@
+# 07 — Chat with an LLM on the phone
+
+This runs **TinyLlama 1.1B Chat**, a small language model, entirely on
+the phone's CPU. On a Fairphone 3 it writes about 4.7 tokens per second.
+
+## Is the model on the phone?
+
+The model files go in `/data/models`: the firmware downloads them when
+the phone is online, or the organiser copies them over.
+
+```elixir
+for id <- [:tinyllama, :tinyllama_tokenizer], do: {id, NervesAI.Models.ready?(id)}
+```
+
+## Load the model
+
+Takes a few seconds.
+
+```elixir
+{:ok, model} =
+  ArmAI.LlamaCandle.load("/data/models/tinyllama.gguf",
+    tokenizer: "/data/models/tinyllama-tokenizer.json"
+  )
+```
+
+## Ask a question
+
+Change `question` and run the cell again.
+
+```elixir
+question = "What three things should I see in Brussels?"
+
+prompt = """
+<|system|>
+You are a helpful, concise travel guide.</s>
+<|user|>
+#{question}</s>
+<|assistant|>
+"""
+
+{answer, stats} =
+  ArmAI.LlamaCandle.generate(model, prompt: prompt, max_new: 128, stop_tokens: [2])
+
+IO.puts(answer)
+stats
+```
+
+`stop_tokens: [2]` ends the answer at TinyLlama's end-of-text token, and
+`max_new` caps its length. The `<|system|>`, `<|user|>` and
+`<|assistant|>` lines are the chat format TinyLlama was trained on.
