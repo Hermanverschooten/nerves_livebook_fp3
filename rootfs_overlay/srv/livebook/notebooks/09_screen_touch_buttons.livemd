@@ -1,21 +1,12 @@
-# 09 — Screen, touch and buttons
+# 09 — Screen, touch and buttons with Scenic
 
-## The screen
+[Scenic](https://hexdocs.pm/scenic) is an Elixir UI framework. A *scene*
+describes what's on screen as a *graph* of primitives (text, rectangles,
+circles…) and receives input: touches and button presses.
 
-The display is a Linux framebuffer, `/dev/fb0`. Read its size and format:
+## Free the screen
 
-```elixir
-fb = "/sys/class/graphics/fb0"
-read = fn file -> Path.join(fb, file) |> File.read!() |> String.trim() end
-
-[width, height] = read.("virtual_size") |> String.split(",") |> Enum.map(&String.to_integer/1)
-bpp = String.to_integer(read.("bits_per_pixel"))
-stride = String.to_integer(read.("stride"))
-%{width: width, height: height, bits_per_pixel: bpp, stride: stride}
-```
-
-The IEx console is also drawn on the screen. Detach it while you draw,
-and wake the screen up:
+The IEx console is drawn on the screen too. Detach it while Scenic runs:
 
 ```elixir
 fbcon =
@@ -23,103 +14,81 @@ fbcon =
   |> Enum.find(&(File.read!(Path.join(&1, "name")) =~ "frame buffer"))
 
 File.write!(Path.join(fbcon, "bind"), "0")
-File.write!(Path.join(fb, "blank"), "0")
+File.write!("/sys/class/graphics/fb0/blank", "0")
 ```
 
-Helpers to paint pixels. Each pixel is 4 bytes, blue-green-red-unused:
+## A scene
+
+This scene shows a title and a status line. Touching the screen draws a
+circle and shows the coordinates; the volume and power buttons show
+their name.
 
 ```elixir
-defmodule Screen do
-  def pixel({r, g, b}), do: <<b, g, r, 0>>
+defmodule Demo.Scene do
+  use Scenic.Scene
+  alias Scenic.Graph
+  import Scenic.Primitives
 
-  # Fill a w×h rectangle at (x, y) with one colour.
-  def rect(stride, {x, y, w, h}, color) do
-    row = :binary.copy(pixel(color), w)
-    {:ok, dev} = :file.open("/dev/fb0", [:write, :read, :binary, :raw])
+  @impl Scenic.Scene
+  def init(scene, _param, _opts) do
+    {width, height} = scene.viewport.size
 
-    for line <- y..(y + h - 1) do
-      :ok = :file.pwrite(dev, line * stride + x * 4, row)
-    end
+    graph =
+      Graph.build(font: :roboto, font_size: 72)
+      |> rect({width, height}, fill: {20, 24, 60})
+      |> text("Hello from Nerves!", fill: :white, translate: {60, 200})
+      |> text("Touch the screen or press a button",
+        id: :status,
+        font_size: 44,
+        fill: :light_gray,
+        translate: {60, 300}
+      )
 
-    :file.close(dev)
+    request_input(scene, [:cursor_button, :key])
+    {:ok, scene |> assign(graph: graph) |> push_graph(graph)}
   end
-end
 
-Screen.rect(stride, {0, 0, width, height}, {0, 0, 80})
-```
-
-Colour bands across the screen:
-
-```elixir
-colors = [{220, 50, 50}, {240, 200, 40}, {60, 180, 75}, {40, 120, 220}]
-band = div(height, length(colors))
-
-for {color, i} <- Enum.with_index(colors) do
-  Screen.rect(stride, {0, i * band, width, band}, color)
-end
-
-:ok
-```
-
-## Touch and buttons
-
-Every touch and button press is a Linux input event. `InputEvent` lists
-the input devices:
-
-```elixir
-devices = InputEvent.enumerate()
-Enum.map(devices, fn {path, info} -> {path, info.name} end)
-```
-
-Listen to all of them for 30 seconds. Touch the screen to draw white
-squares, and press the volume and power buttons.
-
-```elixir
-Screen.rect(stride, {0, 0, width, height}, {0, 0, 0})
-frame = Kino.Frame.new() |> Kino.render()
-pids = for {path, _info} <- devices, do: elem(InputEvent.start_link(path), 1)
-deadline = System.monotonic_time(:millisecond) + 30_000
-
-Stream.unfold(%{x: nil, y: nil}, fn touch ->
-  left = deadline - System.monotonic_time(:millisecond)
-
-  receive do
-    {:input_event, _path, events} when is_list(events) ->
-      touch =
-        Enum.reduce(events, touch, fn
-          {:ev_abs, :abs_mt_position_x, x}, t -> %{t | x: x}
-          {:ev_abs, :abs_mt_position_y, y}, t -> %{t | y: y}
-          {:ev_abs, :abs_mt_tracking_id, -1}, _t -> %{x: nil, y: nil}
-
-          {:ev_key, key, 1}, t when key in [:key_volumeup, :key_volumedown, :key_power] ->
-            Kino.Frame.append(frame, Kino.Markdown.new("Button: `#{key}`"))
-            t
-
-          _other, t ->
-            t
-        end)
-
-      if touch.x && touch.y do
-        x = min(max(touch.x - 20, 0), width - 40)
-        y = min(max(touch.y - 20, 0), height - 40)
-        Screen.rect(stride, {x, y, 40, 40}, {255, 255, 255})
-      end
-
-      {:ok, touch}
-
-    _other ->
-      {:ok, touch}
-  after
-    max(left, 0) -> nil
+  @impl Scenic.Scene
+  def handle_input({:cursor_button, {_button, 1, _mods, {x, y}}}, _id, scene) do
+    scene.assigns.graph
+    |> circle(40, fill: :yellow, translate: {x, y})
+    |> Graph.modify(:status, &text(&1, "Touch at #{round(x)}, #{round(y)}"))
+    |> show(scene)
   end
-end)
-|> Stream.run()
 
-Enum.each(pids, &InputEvent.stop/1)
+  def handle_input({:key, {key, 1, _mods}}, _id, scene) do
+    scene.assigns.graph
+    |> Graph.modify(:status, &text(&1, "Button: #{key}"))
+    |> show(scene)
+  end
+
+  def handle_input(_input, _id, scene), do: {:noreply, scene}
+
+  defp show(graph, scene), do: {:noreply, scene |> assign(graph: graph) |> push_graph(graph)}
+end
 ```
 
-## Give the screen back to the console
+## Show it
+
+A *viewport* connects a scene to a display. `Scenic.Driver.Local` renders
+to the phone's screen and reads the touchscreen and buttons.
 
 ```elixir
+{:ok, viewport} =
+  Scenic.ViewPort.start(
+    name: :fp3_screen,
+    size: {1080, 2160},
+    default_scene: Demo.Scene,
+    drivers: [[module: Scenic.Driver.Local, name: :fp3_screen_driver]]
+  )
+```
+
+Now touch the screen and press the buttons. Edit the scene and run both
+cells again to try your own graph (stop the viewport first, below).
+
+## Stop
+
+```elixir
+Scenic.ViewPort.stop(viewport)
 File.write!(Path.join(fbcon, "bind"), "1")
 ```
