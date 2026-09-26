@@ -34,9 +34,6 @@ defmodule NervesLivebookFP3.MixProject do
         :nerves_pack,
         # FP3-specific userspace daemons
         :ex_rmtfs,
-        :ex_tqftpserv,
-        :ex_hexagonrpcd,
-        :ex_hexagonfs,
         :ex_remoteproc,
         :ex_qcom_smgr,
         :ex_qbootctl,
@@ -56,12 +53,12 @@ defmodule NervesLivebookFP3.MixProject do
   defp deps do
     [
       # ---------------- Nerves runtime ----------------
-      {:nerves, "~> 1.10", runtime: false},
+      {:nerves, "~> 1.13", runtime: false},
       {:shoehorn, "~> 0.9.1"},
       {:ring_logger, "~> 0.11.0"},
       {:toolshed, "~> 0.5.0"},
       {:nerves_uevent, "~> 0.1.7", override: true},
-      {:nerves_runtime, "~> 0.13.0"},
+      {:nerves_runtime, "~> 0.13.12"},
       {:nerves_pack, "~> 0.7"},
       {:nerves_time, "~> 0.4"},
       {:vintage_net, "~> 0.13"},
@@ -71,24 +68,16 @@ defmodule NervesLivebookFP3.MixProject do
       {:livebook, "~> 0.19"},
       {:plug, "~> 1.16"},
 
-      # ---------------- Kino integrations (used by the notebooks) ----------------
+      # ---------------- Kino (used by the notebooks) ----------------
       {:kino, "~> 0.14"},
-      {:kino_vega_lite, "~> 0.1.13"},
-      {:kino_maplibre, "~> 0.1.0"},
-      {:kino_bumblebee, "~> 0.5"},
 
       # ---------------- AI stack ----------------
-      # arm_ai has no precompiled-NIF release yet, so RustlerPrecompiled
-      # always force-builds from source; it needs rustler declared
-      # directly here since it's only an optional dep of nerves_ai.
-      {:rustler, "~> 0.36", optional: true},
+      # nerves_ai pulls arm_ai (whose NIF builds from source with Rust),
+      # nx_arm, the infer_* libraries and the boot helpers.
       {:nerves_ai, github: "mlainez/nerves_ai", override: true},
 
       # ---------------- FP3 hardware userspace ----------------
       {:ex_rmtfs, github: "mlainez/ex_rmtfs"},
-      {:ex_tqftpserv, github: "mlainez/ex_tqftpserv", override: true},
-      {:ex_hexagonrpcd, github: "mlainez/ex_hexagonrpcd", override: true},
-      {:ex_hexagonfs, github: "mlainez/ex_hexagonfs", override: true},
       {:ex_remoteproc, github: "mlainez/ex_remoteproc", override: true},
       {:ex_qcom_smgr, github: "mlainez/ex_qcom_smgr", override: true},
       {:ex_qbootctl, github: "mlainez/ex_qbootctl", override: true},
