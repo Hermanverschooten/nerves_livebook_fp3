@@ -1,20 +1,12 @@
 defmodule NervesLivebookFP3 do
   @moduledoc """
-  Workshop firmware for the FairPhone 3+, built on Nerves.
+  Workshop firmware for the Fairphone 3 / 3+, built on Nerves.
 
-  Boots into a Livebook with pre-loaded notebooks for:
+  Boots into a Livebook served on port 4000. The notebooks ship in the
+  firmware under `/srv/livebook/notebooks` and are copied to
+  `/data/livebook/notebooks` (writable) at boot.
 
-  * AI demos (chat / see / hear / speak / mix / Bumblebee)
-  * Hardware discovery (sensors / camera / LEDs / vibration / GPS /
-    modem / NFC / audio)
-
-  Models are pre-baked into the firmware image at `/srv/models/`
-  and copied to `/data/models/` on first boot (so they're writable
-  if a notebook wants to re-export them). `/data` is the usual
-  Nerves symlink to `/root`, the writable f2fs partition; `/srv`
-  lives on the read-only rootfs.
-
-  See the README and `/srv/livebook/notebooks/` for the workshop
-  curriculum.
+  Models are not in the firmware image: `nerves_ai` downloads them to
+  `/data/models` at boot, or you copy them there over SSH. See the README.
   """
 end

@@ -3,70 +3,71 @@
 > ### ⚠️ Very early work — built for a workshop, not for production
 >
 > Written for the **Goatmire Elixir workshop** on running Nerves on
-> Fairphone 3 hardware. It exists for tinkering and teaching.
->
-> **Not an actively maintained project** (yet) — no stability
-> guarantees, no test coverage, APIs will change without notice.
+> Fairphone 3 hardware. There are no stability guarantees and APIs will
+> change without notice.
 
-Workshop firmware for the FairPhone 3+: boots straight into a
-Livebook with pre-loaded notebooks demonstrating every onboard
-capability — sensors, cameras, LEDs, vibration, GPS, modem,
-NFC, audio — plus a full edge-AI inference stack (chat, vision,
-speech-to-text, text-to-speech, multimodal pipelines, Bumblebee).
+Workshop firmware for the Fairphone 3 and 3+. It boots straight into a
+Livebook with the [`nerves_ai`](https://github.com/mlainez/nerves_ai)
+edge-AI stack and the Fairphone 3 hardware libraries loaded.
 
 ## At workshop time
 
-1. Power on the FP3.
-2. On your laptop, open `http://nerves.local:4000` in a browser.
-3. The Livebook UI appears with the workshop notebooks listed.
-4. Click any notebook, hit "Evaluate", watch it run.
+1. Power on the phone and connect it to your laptop over USB.
+2. Open `http://nerves.local:4000` (or `http://nerves-XXXX.local:4000`
+   when several phones share a network).
+3. Open a notebook and evaluate it.
 
-Everything works offline — models are baked into the firmware.
-
-## Notebook curriculum
-
-### Hardware discovery (~30-40 min)
+## Notebooks
 
 | Notebook | What it covers |
 |---|---|
-| `10_sensors.livemd` | Accelerometer / gyro / magnetometer (IIO sysfs) |
-| `11_camera.livemd` | Snapshot from front + rear cameras |
-| `12_leds.livemd` | RGB notification LED control |
-| `13_vibration.livemd` | Haptic motor patterns |
-| `14_gps.livemd` | GNSS position + satellites |
-| `15_modem.livemd` | Cellular signal, IMEI, network info |
-| `16_nfc.livemd` | NFC tag reading (NDEF, Mifare, …) |
-| `17_audio.livemd` | Speaker output + mic capture |
+| `01_led_flash_vibrator.livemd` | RGB notification LED, flashlight, vibrator |
+| `02_sensors.livemd` | Accelerometer, gyroscope, magnetometer, proximity |
+| `03_cameras.livemd` | Photos from both cameras, H.264 video stream |
+| `04_nfc.livemd` | Detect NFC tags and contactless cards |
+| `05_gps.livemd` | Satellites in view and position fixes |
+| `06_modem.livemd` | IMEI, operating mode, home network, signal strength |
+| `07_llm_chat.livemd` | TinyLlama chat on the phone's CPU |
 
-### AI demos (~30-40 min)
+Notebooks ship in the firmware under `/srv/livebook/notebooks` and are
+copied to `/data/livebook/notebooks` at boot. A notebook that's already
+on `/data` is never overwritten, so attendee edits survive reboots and
+firmware updates.
 
-| Notebook | What it covers |
-|---|---|
-| `01_hello_llm.livemd` | TinyLlama chat — prompt → text |
-| `02_see.livemd` | YOLOv5 object detection on JPEG |
-| `03_hear.livemd` | Whisper STT on an audio clip |
-| `04_speak.livemd` | Piper TTS — text → spoken WAV |
-| `05_mix.livemd` | Voice assistant chain (VAD → STT → LLM → TTS) |
-| `06_bumblebee.livemd` | Bumblebee ViT running on NxArm.Backend |
+The hardware notebooks use these libraries, all started at boot:
+`ex_qcom_smgr` (sensors), `fp3_camera`, `ex_nfc`, `ex_location` (GPS,
+and the QMI client the modem notebook uses), plus the kernel's LED
+interface and the system's `rumble` tool for the vibrator. `ex_audio`
+sets up the FP3+ loudspeaker and `ex_qbootctl` marks each boot slot
+successful.
+
+## Models
+
+Models are too large for the firmware image (the root filesystem is
+250 MiB), so they live on the writable `/data` partition. At boot,
+`nerves_ai` downloads the models listed under `config :nerves_ai,
+:models` in `config/config.exs`, checks their SHA-256, and retries until
+the phone has internet access.
+
+For an offline workshop, download them once on your laptop and copy
+them to each phone:
+
+```sh
+./scripts/fetch_models.sh
+sftp nerves.local <<< $'-mkdir /data/models\nput models/* /data/models/'
+```
 
 ## For the workshop organiser
 
 ### Prerequisites
 
-* A Rust toolchain (`rustc`/`cargo`), plus the `aarch64-unknown-linux-gnu`
-  target (`rustup target add aarch64-unknown-linux-gnu`). `arm_ai` has
-  no precompiled-NIF release yet, so its Rust NIF always builds from
-  source — including when cross-compiling the real firmware.
-
-### One-time setup on host
-
-```sh
-# Get the deps
-mix deps.get
-
-# Download every model into rootfs_overlay/srv/models/ (~3.2 GB)
-./scripts/fetch_models.sh
-```
+* Erlang/OTP 29.1.1 and Elixir 1.20.4 (see `.tool-versions`), matching
+  the official Nerves systems, and the `nerves_bootstrap` archive.
+* A Rust toolchain with the `aarch64-unknown-linux-gnu` target
+  (`rustup target add aarch64-unknown-linux-gnu`). The `arm_ai` NIF has
+  no precompiled release, so it is always built from source.
+* An SSH public key in `~/.ssh`, which is baked into the firmware for
+  `mix upload` and SSH access.
 
 ### Build the firmware
 
@@ -76,47 +77,61 @@ mix deps.get
 mix firmware
 ```
 
+The first build compiles `nerves_system_fp3` from source, which takes a
+long time.
+
+Cellular data is off unless you pass the SIM's APN at build time, for
+example `FP3_APN=internet.be mix firmware`. That adds the modem's QMI
+interface and `Fp3Modem.PowerManager` to the network config.
+
 ### Flash a device
 
-For initial provisioning (or recovery):
+The first install needs lk2nd on the boot partition and the firmware
+image on `userdata`. Follow the flashing steps in the
+[`nerves_system_fp3` README](https://github.com/mlainez/nerves_system_fp3#flashing),
+using the image from:
 
 ```sh
-# Put the FP3 into fastboot mode (volume-down + power)
-mix firmware.image
-fastboot flash userdata _build/${MIX_TARGET}_prod/${MIX_TARGET}/firmware/nerves_livebook_fp3.img
-fastboot reboot
+mix firmware.image    # writes ./nerves_livebook_fp3.img
 ```
 
-For an already-provisioned device on your network:
+After that, update over the network:
 
 ```sh
 mix upload
 ```
 
-### Many devices in parallel
-
-See `scripts/flash_workshop_devices.sh` (TODO) — uses udev rules to
-fastboot-flash every connected FP3 in parallel.
-
-## What's actually running on the device
+## What's running on the device
 
 ```
-nerves_livebook_fp3 (this firmware)
-├── nerves_system_fp3        (FP3 hardware system, kernel, base userspace)
-├── nerves_ai                (meta-package wiring the AI stack)
-│   ├── arm_ai               (NIF: candle / tract-onnx / rustfft / symphonia)
-│   ├── nx_arm               (Nx.Backend over NEON kernels)
-│   ├── nx_primitives        (FFT / embeddings / quantized)
-│   ├── infer_llm            (Whisper + LLM Nx wrappers)
-│   ├── infer_vision         (YOLO / OCR / Face / generic ONNX)
-│   ├── infer_audio          (Silero VAD / Piper TTS)
-│   ├── cpu_governor         (perf-cluster scope + topology)
-│   ├── nerves_model_hub            (first-boot model sync)
-│   └── nerves_data_resize     (first-boot F2FS grow)
-├── ex_nfc / ex_location / ex_audio / fp3_camera / fp3_modem
-├── ex_qcom_smgr (IIO sensors via ADSP)
-└── livebook + kino + kino_vega_lite + kino_maplibre + kino_bumblebee
+nerves_livebook_fp3
+├── nerves_system_fp3   kernel, bootloader glue, daemons (rmtfs, qbootctl, …)
+├── nerves_ai           the AI stack
+│   ├── arm_ai          Rust NIF: candle LLM + Whisper, tract ONNX, NEON kernels
+│   ├── nx_arm          Nx backend and Defn compiler on arm_ai
+│   ├── nx_primitives   FFT, embeddings, int8 matmul/conv
+│   ├── infer_llm       Whisper STT, KV cache, sampling
+│   ├── infer_vision    YOLO, generic ONNX, image preprocessing
+│   ├── infer_audio     audio decode / resample / WAV
+│   ├── cpu_governor    scoped performance governor
+│   ├── nerves_model_hub  model downloads
+│   └── nerves_data_resize  first-boot F2FS grow
+├── ex_rmtfs, ex_remoteproc   modem storage daemon, ADSP start-up
+├── ex_qcom_smgr, fp3_camera, ex_audio, ex_nfc, ex_location, ex_qbootctl
+├── fp3_modem, vintage_net_qmi, qmi   cellular (only with FP3_APN)
+└── livebook + kino
 ```
+
+## Security
+
+Livebook runs with authentication disabled: anyone who can reach port
+4000 can run code on the phone. Only connect it to networks you trust.
+
+Livebook 0.19.10, the current release, pins exact versions of its web
+stack. `mix hex.audit` reports advisories against several of them
+(Bandit, Plug, Phoenix, Req, protobuf), and they can't be overridden
+without breaking Livebook's own constraints. Update Livebook when a
+release with patched dependencies is available.
 
 ## License
 
