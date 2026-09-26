@@ -34,6 +34,7 @@ out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
 | Modem (IMEI, network, signal) | `QMI` | 06 |
 | On-device LLM | `ArmAI.LlamaCandle` | 07 |
 | Loudspeaker | `ExAudio`, `aplay` | 08 |
+| Screen, touchscreen, buttons | `/dev/fb0`, `InputEvent` | 09 |
 
 Not available yet: the microphone and the earpiece (the kernel doesn't
 drive the audio codec they're connected to), and Wi-Fi/Bluetooth, which

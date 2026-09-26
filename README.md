@@ -30,6 +30,7 @@ edge-AI stack and the Fairphone 3 hardware libraries loaded.
 | `06_modem.livemd` | IMEI, operating mode, home network, signal strength |
 | `07_llm_chat.livemd` | TinyLlama chat on the phone's CPU |
 | `08_audio.livemd` | Loudspeaker: tones, melodies, WAV files |
+| `09_screen_touch_buttons.livemd` | Draw on the screen, touch input, volume and power buttons |
 
 Notebooks ship in the firmware under `/srv/livebook/notebooks` and are
 copied to `/data/livebook/notebooks` at boot. A notebook that's already
@@ -39,7 +40,8 @@ firmware updates.
 The hardware notebooks use these libraries, all started at boot:
 `ex_qcom_smgr` (sensors), `fp3_camera`, `ex_nfc`, `ex_location` (GPS,
 and the QMI client the modem notebook uses), plus the kernel's LED
-interface and the system's `rumble` tool for the vibrator. `ex_audio`
+interface and the system's `rumble` tool for the vibrator, and
+`input_event` for the touchscreen and buttons. `ex_audio`
 sets up the loudspeaker route and `ex_qbootctl` marks each boot slot
 successful. The microphone and earpiece aren't supported by the kernel
 yet.
