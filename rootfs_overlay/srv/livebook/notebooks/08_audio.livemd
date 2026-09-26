@@ -1,0 +1,68 @@
+# 08 — Loudspeaker
+
+The loudspeaker is driven through the phone's audio DSP. The microphone
+and the earpiece aren't supported by the kernel yet.
+
+## Route audio to the loudspeaker
+
+`ExAudio` sets ALSA mixer controls. At boot the firmware already enables
+this route for the Fairphone 3+; running it again is harmless.
+
+```elixir
+ExAudio.cset("QUIN_MI2S_RX Audio Mixer MultiMedia1", :on)
+```
+
+On a Fairphone 3+ the amplifier also has an on/off switch (the Fairphone
+3 amplifier doesn't, so this returns an error there):
+
+```elixir
+ExAudio.cset("Speaker Switch", :on)
+```
+
+## Play a tone
+
+Generate one second of a 440 Hz tone, save it as a WAV file and play it
+with `aplay`.
+
+```elixir
+rate = 48_000
+volume = 0.3
+
+tone =
+  Nx.iota({rate}, type: :f32)
+  |> Nx.multiply(2 * :math.pi() * 440 / rate)
+  |> Nx.sin()
+  |> Nx.multiply(volume)
+
+InferAudio.Decoder.write_wav("/tmp/tone.wav", tone, sample_rate: rate)
+System.cmd("aplay", ["-D", "plughw:0,0", "/tmp/tone.wav"], stderr_to_stdout: true)
+```
+
+Change `volume` (0.0 to 1.0) and run it again.
+
+## A short melody
+
+```elixir
+notes = [262, 294, 330, 349, 392, 440, 494, 523]
+
+melody =
+  for freq <- notes do
+    Nx.iota({div(rate, 4)}, type: :f32)
+    |> Nx.multiply(2 * :math.pi() * freq / rate)
+    |> Nx.sin()
+    |> Nx.multiply(volume)
+  end
+  |> Nx.concatenate()
+
+InferAudio.Decoder.write_wav("/tmp/melody.wav", melody, sample_rate: rate)
+System.cmd("aplay", ["-D", "plughw:0,0", "/tmp/melody.wav"], stderr_to_stdout: true)
+```
+
+## Play your own file
+
+`aplay` plays WAV files. Copy one to the phone (for example with
+`sftp nerves.local`) and play it:
+
+```elixir
+System.cmd("aplay", ["-D", "plughw:0,0", "/data/my_sound.wav"], stderr_to_stdout: true)
+```
