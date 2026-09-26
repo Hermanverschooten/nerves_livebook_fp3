@@ -71,7 +71,9 @@ end
 ## Show it
 
 A *viewport* connects a scene to a display. `Scenic.Driver.Local` renders
-to the phone's screen and reads the touchscreen and buttons.
+to the phone's screen and reads the touchscreen and buttons. The viewport
+name makes a second start fail while one is already running, so two
+drivers never fight over the screen.
 
 ```elixir
 {:ok, viewport} =
@@ -79,7 +81,7 @@ to the phone's screen and reads the touchscreen and buttons.
     name: :fp3_screen,
     size: {1080, 2160},
     default_scene: Demo.Scene,
-    drivers: [[module: Scenic.Driver.Local, name: :fp3_screen_driver]]
+    drivers: [[module: Scenic.Driver.Local]]
   )
 ```
 
