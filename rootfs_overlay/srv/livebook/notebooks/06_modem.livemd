@@ -1,0 +1,45 @@
+# 06 — Modem
+
+The modem talks QMI. These cells use the QMI client that `ExLocation`
+starts at boot, so they work with or without cellular data configured.
+
+```elixir
+qmi = ExLocation.QMI
+```
+
+## Modem identity
+
+```elixir
+QMI.DeviceManagement.get_serial_numbers(qmi)
+```
+
+`imei` is the modem's IMEI.
+
+```elixir
+QMI.DeviceManagement.get_operating_mode(qmi)
+```
+
+## Network
+
+These need a SIM card.
+
+```elixir
+QMI.NetworkAccess.get_home_network(qmi)
+```
+
+```elixir
+QMI.NetworkAccess.get_signal_strength(qmi)
+```
+
+`rssi` is in dBm; closer to 0 is stronger.
+
+## Mobile data
+
+Mobile data is only set up when the firmware was built with the SIM's
+APN (`FP3_APN=...`). Then the connection shows up as `rmnet0`:
+
+```elixir
+VintageNet.get(["interface", "rmnet0", "connection"])
+```
+
+`:internet` means the phone is online over the modem.

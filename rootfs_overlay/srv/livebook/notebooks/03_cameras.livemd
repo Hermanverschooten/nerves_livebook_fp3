@@ -1,0 +1,46 @@
+# 03 — Cameras
+
+`Fp3Camera` takes stills and streams video from the `:rear` and `:front`
+cameras.
+
+## Which sensors are fitted?
+
+```elixir
+Fp3Camera.info(:rear)
+```
+
+```elixir
+Fp3Camera.info(:front)
+```
+
+## Take a photo
+
+A full-resolution still takes a few seconds.
+
+```elixir
+{:ok, jpeg} = Fp3Camera.snap_bytes(:rear)
+Kino.Image.new(jpeg, :jpeg)
+```
+
+Faster and smaller, with 2×2 binning:
+
+```elixir
+{:ok, jpeg} = Fp3Camera.snap_bytes(:front, binned: true)
+Kino.Image.new(jpeg, :jpeg)
+```
+
+## Stream video
+
+The stream is raw H.264 over TCP, which a browser can't play. On your
+laptop, open it with `ffplay tcp://nerves.local:8888` (or `mpv`).
+
+```elixir
+{:ok, stream} = Fp3Camera.start_stream(:rear)
+Fp3Camera.streams()
+```
+
+Stop it when you're done:
+
+```elixir
+Fp3Camera.stop_stream(stream)
+```

@@ -1,0 +1,46 @@
+# 04 — NFC
+
+`ExNfc` polls the NFC antenna on the back of the phone and reports tags
+that come close.
+
+## Is the NFC controller up?
+
+```elixir
+ExNfc.state()
+```
+
+`:polling` means it is waiting for a tag.
+
+```elixir
+ExNfc.list_devices()
+```
+
+## Detect tags
+
+Run this cell, then hold a tag or a contactless card against the back of
+the phone. It listens for 30 seconds.
+
+```elixir
+ExNfc.subscribe()
+frame = Kino.Frame.new() |> Kino.render()
+deadline = System.monotonic_time(:millisecond) + 30_000
+
+Stream.repeatedly(fn ->
+  left = max(deadline - System.monotonic_time(:millisecond), 0)
+
+  receive do
+    {ExNfc, :tag_arrived, tag} ->
+      Kino.Frame.append(frame, Kino.Markdown.new("Tag `#{tag.uid_hex}` (#{tag.protocol})"))
+
+    {ExNfc, _other, _} ->
+      :ok
+  after
+    left -> :timeout
+  end
+end)
+|> Enum.find(&(&1 == :timeout))
+
+ExNfc.unsubscribe()
+```
+
+Each tag is reported with its UID and protocol.

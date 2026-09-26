@@ -1,0 +1,57 @@
+# 05 — GPS
+
+`ExLocation` asks the modem's GNSS engine for a position once per second.
+It needs the modem firmware running, and a clear view of the sky: go
+outside or sit by a window. The first fix can take a few minutes.
+
+## Tracker state
+
+```elixir
+ExLocation.state()
+```
+
+`:tracking` means the GNSS engine is running. `:starting` means it is
+still waiting for the modem.
+
+## Satellites in view
+
+```elixir
+ExLocation.satellites()
+|> Enum.map(&Map.take(&1, [:system, :sv_id, :status, :elevation, :azimuth]))
+```
+
+## Current position
+
+```elixir
+ExLocation.get_position()
+```
+
+`{:error, :no_fix_yet}` means there is no fix yet; wait and run it again.
+
+## Follow the position
+
+Prints each new fix for 60 seconds.
+
+```elixir
+ExLocation.subscribe()
+frame = Kino.Frame.new() |> Kino.render()
+deadline = System.monotonic_time(:millisecond) + 60_000
+
+Stream.repeatedly(fn ->
+  left = max(deadline - System.monotonic_time(:millisecond), 0)
+
+  receive do
+    {ExLocation, :position, fix} ->
+      text = "#{fix.latitude}, #{fix.longitude} (#{length(fix.satellites_used)} satellites)"
+      Kino.Frame.render(frame, Kino.Markdown.new(text))
+
+    {ExLocation, _other, _} ->
+      :ok
+  after
+    left -> :timeout
+  end
+end)
+|> Enum.find(&(&1 == :timeout))
+
+ExLocation.unsubscribe()
+```

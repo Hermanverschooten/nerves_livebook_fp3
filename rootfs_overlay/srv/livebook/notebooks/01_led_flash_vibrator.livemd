@@ -1,0 +1,88 @@
+# 01 — Notification LED, flashlight and vibrator
+
+## Find the LEDs
+
+The kernel exposes every LED under `/sys/class/leds`. The notification
+LED is an RGB LED; the flashlight is two white flash LEDs.
+
+```elixir
+leds = File.ls!("/sys/class/leds") |> Enum.sort()
+```
+
+A few helpers to read and write LED settings:
+
+```elixir
+defmodule Led do
+  @root "/sys/class/leds"
+
+  def find(pattern), do: Enum.find(File.ls!(@root), &String.contains?(&1, pattern))
+
+  def read(led, file) do
+    Path.join([@root, led, file]) |> File.read!() |> String.trim()
+  end
+
+  def write(led, file, value) do
+    File.write(Path.join([@root, led, file]), to_string(value))
+  end
+
+  def max(led), do: led |> read("max_brightness") |> String.to_integer()
+end
+
+rgb = Led.find("rgb")
+flash = Led.find("flash")
+{rgb, flash}
+```
+
+## Notification LED
+
+Set a colour with values from 0 to 255.
+
+```elixir
+set_color = fn {r, g, b} ->
+  max = Led.max(rgb)
+  scale = fn v -> div(v * max, 255) end
+  Led.write(rgb, "multi_intensity", "#{scale.(r)} #{scale.(g)} #{scale.(b)}")
+  Led.write(rgb, "brightness", max)
+end
+
+set_color.({255, 0, 0})
+```
+
+Cycle through a few colours, then switch it off:
+
+```elixir
+for color <- [{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}] do
+  set_color.(color)
+  Process.sleep(500)
+end
+
+Led.write(rgb, "brightness", 0)
+```
+
+## Flashlight
+
+Writing a brightness turns the flash LED on in torch mode.
+
+```elixir
+Led.write(flash, "brightness", Led.max(flash))
+Process.sleep(1_000)
+Led.write(flash, "brightness", 0)
+```
+
+## Vibrator
+
+The `rumble` tool plays one vibration: duration in milliseconds, then an
+optional strength from 1 to 65535.
+
+```elixir
+System.cmd("rumble", ["300"])
+```
+
+A pattern:
+
+```elixir
+for ms <- [100, 100, 400] do
+  System.cmd("rumble", [to_string(ms)])
+  Process.sleep(150)
+end
+```

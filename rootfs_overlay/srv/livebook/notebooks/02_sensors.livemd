@@ -1,0 +1,51 @@
+# 02 — Onboard sensors
+
+The accelerometer, gyroscope, magnetometer and proximity sensor run on
+the phone's sensor DSP. `ExQcomSmgr` keeps the latest reading of each.
+
+## Read every sensor once
+
+```elixir
+ExQcomSmgr.read_all()
+```
+
+Units: accelerometer in m/s², gyroscope in rad/s, magnetometer in gauss.
+`{:error, :no_data}` means that sensor hasn't reported yet.
+
+## One sensor
+
+```elixir
+ExQcomSmgr.read(:accel)
+```
+
+## Live view
+
+Tilt the phone while this runs for ten seconds.
+
+```elixir
+frame = Kino.Frame.new() |> Kino.render()
+
+for _ <- 1..50 do
+  text =
+    case ExQcomSmgr.read(:accel) do
+      {:ok, %{x: x, y: y, z: z}} ->
+        "x: #{Float.round(x, 2)}   y: #{Float.round(y, 2)}   z: #{Float.round(z, 2)}  m/s²"
+
+      other ->
+        inspect(other)
+    end
+
+  Kino.Frame.render(frame, Kino.Markdown.new("`#{text}`"))
+  Process.sleep(200)
+end
+
+:done
+```
+
+## Proximity
+
+Cover the top of the phone with your hand and read again.
+
+```elixir
+ExQcomSmgr.read(:prox)
+```
