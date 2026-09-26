@@ -12,6 +12,5 @@ erl_crash.dump
 *.fw
 *.img
 
-# Workshop models — ~3.2 GB, fetched by scripts/fetch_models.sh.
-# Baked into the firmware image at build time; never committed.
-/rootfs_overlay/srv/models/
+# Workshop models (~670 MB), downloaded by scripts/fetch_models.sh.
+/models/
