@@ -1,0 +1,121 @@
+# 00 — The Fairphone 3 as a Nerves device
+
+## The phone
+
+The Fairphone 3 and 3+ share one mainboard and run the same firmware.
+
+| Part | Details |
+|---|---|
+| SoC | Qualcomm Snapdragon 632: 4× Cortex-A73-class + 4× Cortex-A53-class cores, aarch64 |
+| Memory / storage | 4 GB RAM, 64 GB eMMC |
+| Screen | 5.65" 1080×2160 |
+| Cameras | Rear and front, swappable modules (FP3 and FP3+ use different sensors) |
+| Loudspeaker | Swappable module: AW8898 (FP3) or TAS2557 (FP3+) |
+| Radios | LTE modem with GNSS, NFC, Wi-Fi/Bluetooth |
+| Sensors | Accelerometer, gyroscope, magnetometer, proximity (on the sensor DSP) |
+
+At boot the kernel detects which camera and loudspeaker modules are
+fitted, so one image works on both models:
+
+```elixir
+{out, _} = System.cmd("dmesg", [])
+out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
+```
+
+## What you can use from Nerves
+
+| Feature | Library | Notebook |
+|---|---|---|
+| Notification LED, flashlight, vibrator | `/sys/class/leds`, `rumble` | 01 |
+| Sensors | `ExQcomSmgr` | 02 |
+| Cameras (stills, H.264 stream) | `Fp3Camera` | 03 |
+| NFC tags | `ExNfc` | 04 |
+| GPS | `ExLocation` | 05 |
+| Modem (IMEI, network, signal) | `QMI` | 06 |
+| On-device LLM | `ArmAI.LlamaCandle` | 07 |
+| Loudspeaker | `ExAudio`, `aplay` | 08 |
+
+Not available yet: the microphone and the earpiece (the kernel doesn't
+drive the audio codec they're connected to), and Wi-Fi/Bluetooth, which
+this firmware doesn't configure.
+
+## How it boots
+
+The stock Fairphone bootloader only boots Android images, so the boot
+chain has a few extra steps:
+
+1. **Stock bootloader** loads **lk2nd** from the Android `boot` partition.
+   It first applies the device-tree overlays found in the `dtbo`
+   partition; Android's overlays don't match lk2nd, so `dtbo` must hold a
+   *dummy* overlay.
+2. **lk2nd** is a second-stage bootloader. It reads `extlinux.conf` from
+   the Nerves boot partition and starts the Linux kernel.
+3. An **initramfs** maps the Nerves partitions (they live inside Android's
+   `userdata`, see below), mounts the read-only root filesystem and hands
+   over to it.
+4. **erlinit** starts the Erlang VM, and your application.
+
+## Partitions
+
+The Fairphone bootloader doesn't allow adding partitions, so the whole
+Nerves layout is nested inside Android's `userdata` partition:
+
+```
+userdata (/dev/mmcblk0p62)
+├── firmware metadata (U-Boot environment format)
+├── Boot A / Boot B     ext2, 100 MiB each: kernel, device tree, initramfs
+├── Rootfs A / Rootfs B squashfs, 250 MiB each: the firmware, read-only
+└── Application data    f2fs, rest of the disk, mounted at /root (= /data)
+```
+
+A/B slots let `mix upload` write the inactive slot and switch to it.
+Your data (notebooks, models) lives on the application partition and
+survives firmware updates.
+
+Three Android partitions are mounted read-only because they hold the
+firmware the phone's DSPs and modem need: `vendor`, `persist` and `dsp`.
+
+```elixir
+File.read!("/proc/mounts") |> String.split("\n") |> Enum.filter(&(&1 =~ ~r"/(root|boot|mnt)"))
+```
+
+## First-time setup (from a stock Fairphone 3)
+
+This wipes the phone. You need `fastboot` on your computer and these
+three files:
+
+* `lk2nd-msm8953.img` from the
+  [lk2nd releases](https://github.com/msm8916-mainline/lk2nd/releases)
+* the dummy `dtbo.img` from
+  [z3ntu/dtbo-fp3](https://github.com/z3ntu/dtbo-fp3/releases)
+* the firmware image, built with `mix firmware.image`
+  (`nerves_livebook_fp3.img`)
+
+Steps:
+
+1. In Android, enable **Developer options → OEM unlocking**.
+2. Power the phone off, connect USB, then hold **Volume Down** while
+   powering on to enter fastboot mode.
+3. Run:
+
+```sh
+fastboot flashing unlock        # confirm on the phone; erases it
+fastboot set_active a
+fastboot flash dtbo dtbo.img
+fastboot flash boot lk2nd-msm8953.img
+fastboot flash userdata nerves_livebook_fp3.img
+fastboot reboot
+```
+
+The first boot grows the data partition and, when the phone has internet
+access, downloads the models.
+
+## After that
+
+* Update the firmware over the network with `mix upload`.
+* Reach the phone at `http://nerves.local:4000` (Livebook) or
+  `ssh nerves.local`.
+* To reflash from scratch, hold **Volume Down** while powering on: once
+  lk2nd is installed, that opens lk2nd's fastboot mode. Wait until the
+  screen turns on before pressing the button. Then repeat the
+  `fastboot flash userdata` step.
