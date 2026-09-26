@@ -1,7 +1,13 @@
 import Config
 
-# Make sure Livebook's apps boot in the right order.
+# Enable the Nerves integration with Mix (required for target builds).
+Application.start(:nerves_bootstrap)
+
+# Reproducible builds: fixed timestamp for files in the firmware image.
 config :nerves, source_date_epoch: "1700000000"
+
+# Ship rootfs_overlay/ (the workshop notebooks under /srv) in the image.
+config :nerves, :firmware, rootfs_overlay: "rootfs_overlay"
 
 # Use shoehorn to start the main application. See the shoehorn
 # documentation on hexdocs.pm/shoehorn for the full options.
@@ -75,10 +81,10 @@ config :livebook,
   apps_path: "/data/livebook/apps",
   cookie: :nerves_livebook_fp3
 
-# Where the workshop notebooks live on disk. We bake them into
-# /srv/livebook/notebooks/ in the rootfs overlay; on first boot
-# we copy them to /data/livebook/notebooks/ so they're writable
-# (Livebook needs to be able to save state next to them).
+# Where the workshop notebooks live on disk. They ship in
+# /srv/livebook/notebooks/ via the rootfs overlay; at boot any notebook
+# not yet in /data/livebook/notebooks/ is copied there so it's writable
+# (Livebook saves state next to them) and attendee edits are kept.
 #
 # On the writable paths: erlinit mounts /dev/mmcblk0p62p3 (f2fs)
 # at /root, and nerves_system_br's skeleton ships /data as a
@@ -89,49 +95,22 @@ config :nerves_livebook_fp3,
   notebooks_source: "/srv/livebook/notebooks",
   notebooks_dest: "/data/livebook/notebooks"
 
-# Pre-baked model paths. NervesModelHub's app config takes a list of
-# {id, [source: ..., path: ...]} entries. We point `source` at the
-# baked-in /srv path so the on-first-boot logic copies (not
-# downloads) into /data/models/.
+# Models fetched by nerves_ai at boot (NervesModelHub format). They are
+# too big for the 250 MiB rootfs, so they live on /data. nerves_ai
+# downloads them in the background and retries until the device has
+# internet access. For an offline workshop, copy the files into
+# /data/models/ over SSH instead (see the README).
 config :nerves_ai, :models,
   tinyllama: [
-    source: {:file, "/srv/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"},
-    path: "/data/models/tinyllama.gguf"
+    source:
+      {:hf, "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"},
+    path: "/data/models/tinyllama.gguf",
+    sha256: "9fecc3b3cd76bba89d504f29b616eedf7da85b96540e490ca5824d3f7d2776a0"
   ],
   tinyllama_tokenizer: [
-    source: {:file, "/srv/models/tinyllama-tokenizer.json"},
-    path: "/data/models/tinyllama-tokenizer.json"
-  ],
-  whisper_tiny: [
-    source: {:file, "/srv/models/whisper-tiny-q5_1.bin"},
-    path: "/data/models/whisper-tiny.gguf"
-  ],
-  whisper_tokenizer: [
-    source: {:file, "/srv/models/whisper-tokenizer.json"},
-    path: "/data/models/whisper-tokenizer.json"
-  ],
-  whisper_mel_filters: [
-    source: {:file, "/srv/models/whisper-mel-filters.bin"},
-    path: "/data/models/whisper-mel-filters.bin"
-  ],
-  yolov5n: [
-    source: {:file, "/srv/models/yolov5n.onnx"},
-    path: "/data/models/yolov5n.onnx"
-  ],
-  silero_vad: [
-    source: {:file, "/srv/models/silero_vad.onnx"},
-    path: "/data/models/silero_vad.onnx"
-  ],
-  piper_voice: [
-    source: {:file, "/srv/models/en_US-amy-medium.onnx"},
-    path: "/data/models/en_US-amy-medium.onnx"
-  ],
-  # Piper's voice config carries the `phoneme_id_map` that
-  # ArmAI.Phonemizer.to_phoneme_ids/2 needs — without it there is
-  # no way to turn text into the IDs Piper.synthesize/3 expects.
-  piper_voice_config: [
-    source: {:file, "/srv/models/en_US-amy-medium.onnx.json"},
-    path: "/data/models/en_US-amy-medium.onnx.json"
+    source: {:hf, "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "tokenizer.json"},
+    path: "/data/models/tinyllama-tokenizer.json",
+    sha256: "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
   ]
 
 # First-boot F2FS grow of the /root partition (idempotent — the
