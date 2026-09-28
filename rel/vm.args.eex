@@ -35,9 +35,8 @@
 +sbwtdcpu none
 +sbwtdio none
 
-## Save the shell history between reboots
-## See https://www.erlang.org/doc/apps/kernel/kernel_app for additional options
--kernel shell_history enabled
+## No shell history: the kernel would keep its log open on the data
+## partition, and nerves_data_resize has to unmount that at boot.
 
 ## Enable heartbeat monitoring of the Erlang runtime system
 -heart -env HEART_BEAT_TIMEOUT 30
