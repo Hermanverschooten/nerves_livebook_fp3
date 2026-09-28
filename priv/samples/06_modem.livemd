@@ -1,4 +1,4 @@
-# 06 — Modem
+# Modem
 
 The modem talks QMI. These cells use the QMI client that `ExLocation`
 starts at boot, so they work with or without cellular data configured.

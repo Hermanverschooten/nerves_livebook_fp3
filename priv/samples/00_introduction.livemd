@@ -1,4 +1,4 @@
-# 00 — The Fairphone 3 as a Nerves device
+# The Fairphone 3 as a Nerves device
 
 ## The phone
 

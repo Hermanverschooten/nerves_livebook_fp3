@@ -6,7 +6,7 @@ Application.start(:nerves_bootstrap)
 # Reproducible builds: fixed timestamp for files in the firmware image.
 config :nerves, source_date_epoch: "1700000000"
 
-# Ship rootfs_overlay/ (the workshop notebooks under /srv) in the image.
+# Ship rootfs_overlay/ (/etc/iex.exs) in the image.
 config :nerves, :firmware, rootfs_overlay: "rootfs_overlay"
 
 # Use shoehorn to start the main application. See the shoehorn
@@ -81,19 +81,13 @@ config :livebook,
   apps_path: "/data/livebook/apps",
   cookie: :nerves_livebook_fp3
 
-# Where the workshop notebooks live on disk. They ship in
-# /srv/livebook/notebooks/ via the rootfs overlay; at boot any notebook
-# not yet in /data/livebook/notebooks/ is copied there so it's writable
-# (Livebook saves state next to them) and attendee edits are kept.
+# Where the workshop notebooks live on disk. They ship in priv/samples;
+# at boot any notebook not yet in /data/livebook/notebooks/ is copied
+# there so it's writable and attendee edits are kept.
 #
-# On the writable paths: erlinit mounts /dev/mmcblk0p62p3 (f2fs)
-# at /root, and nerves_system_br's skeleton ships /data as a
-# symlink to root — so /data/... and /root/... are the same
-# storage. We use /data here because that's the Nerves-facing
-# name. /srv is on the read-only rootfs.
-config :nerves_livebook_fp3,
-  notebooks_source: "/srv/livebook/notebooks",
-  notebooks_dest: "/data/livebook/notebooks"
+# erlinit mounts /dev/mmcblk0p62p3 (f2fs) at /root, and /data is a
+# symlink to /root, so /data/... and /root/... are the same storage.
+config :nerves_livebook_fp3, notebooks_dest: "/data/livebook/notebooks"
 
 # Models fetched by nerves_ai at boot (NervesModelHub format). They are
 # too big for the 250 MiB rootfs, so they live on /data. nerves_ai

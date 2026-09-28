@@ -1,4 +1,4 @@
-# 07 — Chat with an LLM on the phone
+# Chat with an LLM on the phone
 
 This runs **TinyLlama 1.1B Chat**, a small language model, entirely on
 the phone's CPU. On a Fairphone 3 it writes about 4.7 tokens per second.

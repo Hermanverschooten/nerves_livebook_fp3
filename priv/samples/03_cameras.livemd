@@ -1,4 +1,4 @@
-# 03 — Cameras
+# Cameras
 
 `Fp3Camera` takes stills and streams video from the `:rear` and `:front`
 cameras.

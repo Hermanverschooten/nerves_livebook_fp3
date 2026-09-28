@@ -1,4 +1,4 @@
-# 04 — NFC
+# NFC
 
 `ExNfc` polls the NFC antenna on the back of the phone and reports tags
 that come close.

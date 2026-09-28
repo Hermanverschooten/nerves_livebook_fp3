@@ -1,4 +1,4 @@
-# 05 — GPS
+# GPS
 
 `ExLocation` asks the modem's GNSS engine for a position once per second.
 It needs the modem firmware running, and a clear view of the sky: go
