@@ -101,11 +101,11 @@ scripts/flash-fp3.sh --loop     # one phone after another
 ```
 
 It checks what the phone has and does only what's needed: unlocks a stock
-bootloader (confirm on the phone; Android's **Developer options → OEM
-unlocking** must be on), installs the dummy `dtbo` and lk2nd 22.0 on
-`boot`, then writes the image to `userdata`. On a phone that already runs
-lk2nd it only rewrites `userdata`. Either way the phone's data is erased.
-`--dry-run` shows what it would do. The manual steps are in the
+bootloader by writing an unlocked `devinfo` partition and rebooting into
+fastboot (no Android OEM unlocking needed), installs the dummy `dtbo` and
+lk2nd 22.0 on `boot`, then writes the image to `userdata`. On a phone that
+already runs lk2nd it only rewrites `userdata`. Either way the phone's data
+is erased. `--dry-run` shows what it would do. The manual steps are in the
 [`nerves_system_fp3` README](https://github.com/mlainez/nerves_system_fp3#flashing).
 
 After that, update over the network:

@@ -5,7 +5,7 @@
 # Plug a phone in fastboot mode and run this script. It works out what
 # the phone needs:
 #
-#   * stock bootloader, locked:   unlock (confirm on the phone), then as below
+#   * stock bootloader, locked:   unlocked devinfo, reboot to fastboot, then as below
 #   * stock bootloader, unlocked: dummy dtbo, lk2nd on boot, image on userdata
 #   * lk2nd already installed:    image on userdata only
 #
@@ -24,6 +24,10 @@ DTBO_SHA256="83c9b35c73051f04724ab6ba32c333a9c8f5f258454473e56a7597a4d4563431"
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/fp3-flash"
+
+# devinfo partition with the unlocked flag set. The stock bootloader
+# accepts it while locked, so no Android OEM unlocking step is needed.
+DEVINFO="$REPO_DIR/scripts/devinfo-unlocked.gpx"
 
 IMAGE="$REPO_DIR/nerves_livebook_fp3.img"
 SERIAL=""
@@ -149,16 +153,12 @@ flash_phone() {
 
   if [ "$unlocked" != "yes" ]; then
     say "Unlocking the bootloader"
-    cat <<EOF
-Android's Developer options -> OEM unlocking must be enabled for this to work.
-On the phone, select "Unlock the bootloader" with the volume keys and press Power.
-EOF
-    run fastboot -s "$sn" flashing unlock || true
+    run fastboot -s "$sn" flash devinfo "$DEVINFO"
+    # The bootloader reads devinfo only at startup.
+    run fastboot -s "$sn" reboot bootloader
     if ! $DRY_RUN; then
-      # The phone may reboot while it wipes itself; wait until it is
-      # back in fastboot and reports itself unlocked.
       until [ "$(getvar "$sn" unlocked 2>/dev/null)" = "yes" ]; do
-        echo "Waiting for the phone to come back unlocked (put it in fastboot mode again if it rebooted)..."
+        echo "Waiting for the phone to come back unlocked in fastboot mode..."
         sleep 3
       done
     fi
@@ -178,6 +178,7 @@ if $BUILD; then
      MIX_TARGET=nerves_system_fp3 mix firmware.image "$IMAGE")
 fi
 [ -f "$IMAGE" ] || die "no firmware image at $IMAGE (run with --build, or pass --image)"
+[ -f "$DEVINFO" ] || die "no devinfo image at $DEVINFO"
 
 say "Checking lk2nd and dtbo"
 fetch "$LK2ND_URL" "$LK2ND_SHA256" lk2nd-msm8953.img
