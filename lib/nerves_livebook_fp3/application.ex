@@ -13,7 +13,29 @@ defmodule NervesLivebookFP3.Application do
 
     # Scenic's supervisor, so notebooks can start viewports on the screen.
     children = [{Scenic, []}]
-    Supervisor.start_link(children, strategy: :one_for_one, name: NervesLivebookFP3.Supervisor)
+
+    with {:ok, pid} <-
+           Supervisor.start_link(children,
+             strategy: :one_for_one,
+             name: NervesLivebookFP3.Supervisor
+           ) do
+      validate_firmware()
+      {:ok, pid}
+    end
+  end
+
+  # fwup installs a firmware as not validated; this release has started,
+  # so mark its slot valid.
+  defp validate_firmware do
+    if Nerves.Runtime.mix_target() != :host do
+      case Nerves.Runtime.validate_firmware() do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning("[workshop] firmware validation failed: #{inspect(reason)}")
+      end
+    end
   end
 
   defp sync_notebooks do
