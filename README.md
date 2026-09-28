@@ -91,14 +91,22 @@ in the image. People can pick another network with the Wi-Fi notebook.
 
 ### Flash a device
 
-The first install needs lk2nd on the boot partition and the firmware
-image on `userdata`. Follow the flashing steps in the
-[`nerves_system_fp3` README](https://github.com/mlainez/nerves_system_fp3#flashing),
-using the image from:
+`scripts/flash-fp3.sh` flashes a phone over USB. Put the phone in fastboot
+mode (power it off, hold Volume Down, plug in USB) and run:
 
 ```sh
-mix firmware.image    # writes ./nerves_livebook_fp3.img
+scripts/flash-fp3.sh --build    # builds nerves_livebook_fp3.img, then flashes it
+scripts/flash-fp3.sh            # flashes an image that's already built
+scripts/flash-fp3.sh --loop     # one phone after another
 ```
+
+It checks what the phone has and does only what's needed: unlocks a stock
+bootloader (confirm on the phone; Android's **Developer options → OEM
+unlocking** must be on), installs the dummy `dtbo` and lk2nd 22.0 on
+`boot`, then writes the image to `userdata`. On a phone that already runs
+lk2nd it only rewrites `userdata`. Either way the phone's data is erased.
+`--dry-run` shows what it would do. The manual steps are in the
+[`nerves_system_fp3` README](https://github.com/mlainez/nerves_system_fp3#flashing).
 
 After that, update over the network:
 
