@@ -1,0 +1,185 @@
+# Bluetooth LE
+
+## Overview
+
+The Bluetooth radio shares the WCN3680 chip with Wi-Fi. The kernel talks
+to it and exposes it as `hci0`; from there
+[BlueHeron](https://github.com/mlainez/blue_heron), a Bluetooth LE stack
+written in Elixir, drives it directly. There is no BlueZ daemon in
+between: BlueHeron sends the raw HCI commands itself.
+
+| Layer | What it does |
+|---|---|
+| WCN3680 | The radio |
+| `btqcomsmd` (kernel) | Carries HCI packets to the chip, exposes `hci0` |
+| `BlueHeron.HCI.Transport.HCISocket` | Opens `hci0` for exclusive use |
+| `BlueHeron` | Scanning, advertising, GATT services |
+
+This notebook covers Bluetooth **LE** (low energy): beacons, sensors,
+fitness trackers, phone apps. Classic Bluetooth (headsets, keyboards)
+isn't supported.
+
+Install a BLE scanner on your own phone to follow along, for example
+**nRF Connect** (Android and iOS).
+
+## Is the radio ready?
+
+BlueHeron starts with the firmware and sets the controller up in the
+background:
+
+```elixir
+BlueHeron.HCI.Transport.setup_complete?()
+```
+
+```elixir
+{:ok, address} = BlueHeron.HCI.Transport.get_setup_param(:bd_addr)
+to_string(address)
+```
+
+## Scan for nearby devices
+
+Scanning means listening for advertisements: short packets that BLE
+devices broadcast a few times per second. BlueHeron forwards every HCI
+event to the processes that subscribe to it.
+
+```elixir
+alias BlueHeron.HCI.Command.LEController
+alias BlueHeron.HCI.Event.LEMeta.AdvertisingReport
+
+BlueHeron.Registry.subscribe()
+
+{:ok, _} = BlueHeron.HCI.Transport.send_hci(%LEController.SetScanParameters{le_scan_type: 0x01})
+{:ok, _} = BlueHeron.HCI.Transport.send_hci(%LEController.SetScanEnable{le_scan_enable: true})
+
+collect = fn collect, found, deadline ->
+  wait = max(deadline - System.monotonic_time(:millisecond), 0)
+
+  receive do
+    {:HCI_EVENT_PACKET, %AdvertisingReport{devices: devices}} ->
+      found =
+        Enum.reduce(devices, found, fn device, found ->
+          name =
+            Enum.find_value(device.data, fn
+              {"Complete Local Name", name} -> name
+              {"Shortened Local Name", name} -> name
+              _ -> nil
+            end)
+
+          # The signal strength arrives as one byte; read it as a signed number.
+          <<rssi::signed>> = <<device.rss>>
+
+          Map.update(found, device.address, %{name: name, rssi: rssi}, fn seen ->
+            %{name: seen.name || name, rssi: max(seen.rssi, rssi)}
+          end)
+        end)
+
+      collect.(collect, found, deadline)
+  after
+    wait -> found
+  end
+end
+
+# Listen for ten seconds.
+found = collect.(collect, %{}, System.monotonic_time(:millisecond) + 10_000)
+
+{:ok, _} = BlueHeron.HCI.Transport.send_hci(%LEController.SetScanEnable{le_scan_enable: false})
+
+for {address, %{name: name, rssi: rssi}} <- Enum.sort_by(found, fn {_, d} -> -d.rssi end) do
+  %{
+    address: BlueHeron.Address.parse(address) |> to_string(),
+    name: name || "",
+    signal: "#{rssi} dBm"
+  }
+end
+|> Kino.DataTable.new()
+```
+
+`signal` is how strongly each device was heard: around -40 dBm is right
+next to the phone, -90 dBm is at the edge of range. Many devices don't
+advertise a name.
+
+## Advertise the phone
+
+Now the Fairphone broadcasts its own advertisements. Look for
+**Fairphone-Nerves** in the scanner app on your phone.
+
+```elixir
+alias BlueHeron.AdvertisingData
+
+flags = AdvertisingData.flags(le_general_discoverable_mode: true, br_edr_not_supported: true)
+name = AdvertisingData.complete_name("Fairphone-Nerves")
+
+BlueHeron.Broadcaster.stop_advertising()
+BlueHeron.Broadcaster.set_advertising_data(flags <> name)
+BlueHeron.Broadcaster.start_advertising()
+```
+
+## Share the battery level
+
+A GATT service is what other devices read once they connect. Bluetooth
+defines a standard **Battery Service** (`0x180F`) with a **Battery Level**
+characteristic (`0x2A19`), one byte from 0 to 100. Scanner apps know it
+and show it as a percentage.
+
+```elixir
+alias BlueHeron.GATT.{Characteristic, Service}
+
+battery_level = fn ->
+  "/sys/class/power_supply/qg-battery/capacity"
+  |> File.read!()
+  |> String.trim()
+  |> String.to_integer()
+end
+
+gap =
+  Service.new(%{
+    id: :gap,
+    type: 0x1800,
+    characteristics: [
+      Characteristic.new(%{id: {:gap, :device_name}, type: 0x2A00, properties: 0b0000010}),
+      Characteristic.new(%{id: {:gap, :appearance}, type: 0x2A01, properties: 0b0000010})
+    ],
+    read: fn
+      {:gap, :device_name} -> "Fairphone-Nerves"
+      # Appearance 0x0040: generic phone
+      {:gap, :appearance} -> <<0x0040::little-16>>
+    end
+  })
+
+gatt =
+  Service.new(%{
+    id: :gatt,
+    type: 0x1801,
+    characteristics: [
+      Characteristic.new(%{id: {:gatt, :service_changed}, type: 0x2A05, properties: 0b0100000})
+    ]
+  })
+
+battery =
+  Service.new(%{
+    id: :battery,
+    type: 0x180F,
+    characteristics: [
+      Characteristic.new(%{id: {:battery, :level}, type: 0x2A19, properties: 0b0000010})
+    ],
+    read: fn {:battery, :level} -> <<battery_level.()>> end
+  })
+
+BlueHeron.Peripheral.add_service(gap)
+BlueHeron.Peripheral.add_service(gatt)
+BlueHeron.Peripheral.add_service(battery)
+```
+
+In nRF Connect, connect to **Fairphone-Nerves**, open **Battery Service**
+and read **Battery Level**: it matches the battery notebook.
+
+`properties: 0b0000010` marks a characteristic as readable. Write your
+own service the same way: pick a random 128-bit UUID for `type`, return
+any binary from `read`, and add a `write` function to receive data from
+the other phone.
+
+## Stop advertising
+
+```elixir
+BlueHeron.Broadcaster.stop_advertising()
+```

@@ -34,14 +34,15 @@ out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
 | NFC tags | `ExNfc` | 06 |
 | GPS | `ExLocation` | 07 |
 | Modem (IMEI, network, signal) | `QMI` | 08 |
-| Loudspeaker | `ExAudio`, `aplay` | 09 |
-| Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 10 |
-| AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 11 |
+| Bluetooth LE | `BlueHeron` | 09 |
+| Loudspeaker | `ExAudio`, `aplay` | 10 |
+| Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 11 |
+| AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 12 |
 
 Not available yet: the microphone and the earpiece, which need a system
-image whose kernel drives their audio codec (the WCD9335), and
-Bluetooth, which this firmware doesn't configure. Wi-Fi is set up from
-the Wi-Fi notebook.
+image whose kernel drives their audio codec (the WCD9335), and classic
+Bluetooth (only Bluetooth LE is supported). Wi-Fi is set up from the
+Wi-Fi notebook.
 
 ## How it boots
 
