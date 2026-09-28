@@ -116,4 +116,7 @@ config :livebook, LivebookWeb.Endpoint,
 # Bluetooth LE through the kernel's hci0 (the WCN3680 behind btqcomsmd).
 # BlueHeron takes the controller over exclusively, so bluetoothd must not
 # run.
-config :blue_heron, transport: [type: :hci_socket, device: 0]
+config :blue_heron,
+  transport: [type: :hci_socket, device: 0],
+  # Pair without a passkey: nothing on the phone shows one to the user.
+  smp: [io_capability: :no_input_no_output]
