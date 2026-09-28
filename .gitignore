@@ -12,8 +12,6 @@ erl_crash.dump
 *.fw
 *.img
 
-# Workshop models (~670 MB), downloaded by scripts/fetch_models.sh.
-/models/
 
 # Scenic compiles its static assets here.
 /priv/__scenic/

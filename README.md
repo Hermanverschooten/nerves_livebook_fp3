@@ -49,18 +49,11 @@ yet.
 ## Models
 
 Models are too large for the firmware image (the root filesystem is
-250 MiB), so they live on the writable `/data` partition. At boot,
-`nerves_ai` downloads the models listed under `config :nerves_ai,
-:models` in `config/config.exs`, checks their SHA-256, and retries until
-the phone has internet access.
-
-For an offline workshop, download them once on your laptop and copy
-them to each phone:
-
-```sh
-./scripts/fetch_models.sh
-sftp nerves.local <<< $'-mkdir /data/models\nput models/* /data/models/'
-```
+250 MiB), and nothing downloads them at boot. Each AI notebook fetches
+the model it needs with `NervesModelHub.ensure_one/2` the first time it
+runs: the phone downloads it from Hugging Face over Wi-Fi into
+`/data/models`, checks its SHA-256, and reuses it afterwards. The notebooks include a
+cell to connect the phone to Wi-Fi.
 
 ## For the workshop organiser
 

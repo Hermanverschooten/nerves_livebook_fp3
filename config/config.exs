@@ -89,23 +89,9 @@ config :livebook,
 # symlink to /root, so /data/... and /root/... are the same storage.
 config :nerves_livebook_fp3, notebooks_dest: "/data/livebook/notebooks"
 
-# Models fetched by nerves_ai at boot (NervesModelHub format). They are
-# too big for the 250 MiB rootfs, so they live on /data. nerves_ai
-# downloads them in the background and retries until the device has
-# internet access. For an offline workshop, copy the files into
-# /data/models/ over SSH instead (see the README).
-config :nerves_ai, :models,
-  tinyllama: [
-    source:
-      {:hf, "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"},
-    path: "/data/models/tinyllama.gguf",
-    sha256: "9fecc3b3cd76bba89d504f29b616eedf7da85b96540e490ca5824d3f7d2776a0"
-  ],
-  tinyllama_tokenizer: [
-    source: {:hf, "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "tokenizer.json"},
-    path: "/data/models/tinyllama-tokenizer.json",
-    sha256: "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
-  ]
+# No models are downloaded at boot: each AI notebook fetches its own
+# with NervesModelHub.ensure_one/2 when the phone is online.
+config :nerves_ai, :models, []
 
 # Scenic's asset library (fonts); see lib/nerves_livebook_fp3/assets.ex.
 config :scenic, :assets, module: NervesLivebookFP3.Assets

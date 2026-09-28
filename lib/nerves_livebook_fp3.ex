@@ -6,7 +6,7 @@ defmodule NervesLivebookFP3 do
   `priv/samples`, are copied to `/data/livebook/notebooks` (writable) at
   boot and starred so they appear on Livebook's home page.
 
-  Models are not in the firmware image: `nerves_ai` downloads them to
-  `/data/models` at boot, or you copy them there over SSH. See the README.
+  Models are not in the firmware image: each AI notebook downloads the
+  one it needs with `NervesModelHub.ensure_one/2`.
   """
 end
