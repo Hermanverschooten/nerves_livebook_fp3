@@ -253,7 +253,9 @@ Point the back of the phone at something and run the cell. It takes a
 
 ```elixir
 photo = "/tmp/detect.jpg"
+IO.puts("Taking the photo...")
 {:ok, _} = Fp3Camera.snap(:rear, photo, binned: true)
+IO.puts("Looking for objects...")
 
 input =
   InferVision.Preprocess.load_for_classifier(photo,
@@ -364,6 +366,7 @@ file to that.
 ```elixir
 sample = Application.app_dir(:nerves_livebook_fp3, "priv/audio/jfk.wav")
 pcm = InferAudio.Decoder.load_for_whisper(sample)
+IO.puts("Transcribing...")
 InferLLM.Whisper.transcribe(whisper, pcm)
 ```
 
@@ -389,7 +392,9 @@ end
 
 # The first capture after boot returns silence; a short one wakes the path up.
 arecord.(1, "/tmp/warmup.wav")
+IO.puts("Recording for 5 seconds: speak now!")
 arecord.(5, "/tmp/me.wav")
+IO.puts("Transcribing...")
 
 InferLLM.Whisper.transcribe(whisper, InferAudio.Decoder.load_for_whisper("/tmp/me.wav"))
 ```
@@ -397,7 +402,8 @@ InferLLM.Whisper.transcribe(whisper, InferAudio.Decoder.load_for_whisper("/tmp/m
 ## Chat with a language model (TinyLlama)
 
 **TinyLlama 1.1B Chat** is a small language model: about 670 MB, the
-biggest step. On a Fairphone 3 it writes about 4.7 tokens per second.
+biggest step. On a Fairphone 3 it writes about 4.7 tokens per second, so
+the answer is shown as it's written.
 
 ```elixir
 model_path =
@@ -438,12 +444,16 @@ You are a helpful, concise travel guide.</s>
 <|assistant|>
 """
 
-{answer, stats} =
-  ArmAI.LlamaCandle.generate(model, prompt: prompt, max_new: 128, stop_tokens: [2])
+# The answer appears as the model writes it, piece by piece.
+for piece <- ArmAI.LlamaCandle.stream(model, prompt: prompt, max_new: 128, stop_tokens: [2]) do
+  IO.write(piece)
+end
 
-IO.puts(answer)
-stats
+:done
 ```
+
+`ArmAI.LlamaCandle.generate/2` takes the same options and returns the
+whole answer at once, with timing statistics (tokens per second).
 
 `stop_tokens: [2]` ends the answer at TinyLlama's end-of-text token, and
 `max_new` caps its length. The `<|system|>`, `<|user|>` and
