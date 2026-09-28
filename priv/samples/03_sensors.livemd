@@ -25,7 +25,8 @@ Tilt the phone while this runs for ten seconds.
 ```elixir
 frame = Kino.Frame.new() |> Kino.render()
 
-for _ <- 1..50 do
+# 50 rounds; each reads the accelerometer, then waits 0.2 seconds.
+for _round <- 1..50 do
   text =
     case ExQcomSmgr.read(:accel) do
       {:ok, %{x: x, y: y, z: z}} ->

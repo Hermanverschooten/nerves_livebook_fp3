@@ -35,11 +35,9 @@ Prints each new fix for 60 seconds.
 ```elixir
 ExLocation.subscribe()
 frame = Kino.Frame.new() |> Kino.render()
-deadline = System.monotonic_time(:millisecond) + 60_000
 
-Stream.repeatedly(fn ->
-  left = max(deadline - System.monotonic_time(:millisecond), 0)
-
+# 60 rounds; each waits up to 1 second for a message from ExLocation.
+for _round <- 1..60 do
   receive do
     {ExLocation, :position, fix} ->
       text = "#{fix.latitude}, #{fix.longitude} (#{length(fix.satellites_used)} satellites)"
@@ -48,10 +46,9 @@ Stream.repeatedly(fn ->
     {ExLocation, _other, _} ->
       :ok
   after
-    left -> :timeout
+    1_000 -> :ok
   end
-end)
-|> Enum.find(&(&1 == :timeout))
+end
 
 ExLocation.unsubscribe()
 ```
