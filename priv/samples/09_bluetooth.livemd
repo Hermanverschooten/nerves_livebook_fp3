@@ -178,6 +178,20 @@ own service the same way: pick a random 128-bit UUID for `type`, return
 any binary from `read`, and add a `write` function to receive data from
 the other phone.
 
+## Pair with a laptop
+
+The Fairphone can also pair like any Bluetooth accessory. It uses "Just
+Works" pairing, so there is no code to type.
+
+With the battery service registered (the cell above) and the phone
+advertising, open your laptop's Bluetooth settings and set up
+**Fairphone-Nerves**. On Linux with GNOME, the phone's battery then
+shows up under **Settings → Power**, or with `upower -d` in a terminal.
+
+Services only live until the phone reboots: after a reboot, run the
+battery cell again before connecting. If an earlier attempt left the
+laptop stuck on "not set up", remove the device on the laptop first.
+
 ## Stop advertising
 
 ```elixir
