@@ -7,11 +7,9 @@ defmodule NervesLivebookFP3.Application do
   @impl true
   def start(_type, _args) do
     # Livebook needs writable notebooks, but the release is read-only:
-    # copy any shipped notebook that isn't on /data yet (so notebooks
-    # added by a firmware update show up), leaving attendee edits alone.
-    # Starring them lists them on Livebook's home page.
-    sync_notebooks()
-    star_notebooks()
+    # sync the shipped notebooks to /data, leaving attendee edits alone,
+    # and star them so they're listed on Livebook's home page.
+    sync_notebooks() |> star_notebooks()
 
     # Scenic's supervisor, so notebooks can start viewports on the screen.
     children = [{Scenic, []}]
@@ -44,41 +42,79 @@ defmodule NervesLivebookFP3.Application do
     Application.get_env(:nerves_livebook_fp3, :notebooks_dest, "/data/livebook/notebooks")
   end
 
+  # Keeps /data in step with the shipped notebooks. A manifest records the
+  # checksum of each notebook as last shipped, so a copy nobody edited is
+  # updated or removed with the firmware, while edited copies are kept.
   defp sync_notebooks do
     source = Application.app_dir(:nerves_livebook_fp3, "priv/samples")
     dest = notebooks_dest()
+    manifest_path = Path.join(dest, ".shipped.json")
+    File.mkdir_p!(dest)
 
-    if File.dir?(source) do
-      File.mkdir_p!(dest)
+    old_manifest =
+      case File.read(manifest_path) do
+        {:ok, json} -> JSON.decode!(json)
+        {:error, _} -> %{}
+      end
 
-      copied =
-        for name <- File.ls!(source),
-            dst_path = Path.join(dest, name),
-            not File.exists?(dst_path) do
-          File.copy!(Path.join(source, name), dst_path)
-          name
+    shipped = source |> File.ls!() |> Enum.filter(&String.ends_with?(&1, ".livemd"))
+
+    new_manifest =
+      Map.new(shipped, fn name ->
+        src = Path.join(source, name)
+        dst = Path.join(dest, name)
+        sha = sha256(src)
+
+        cond do
+          not File.exists?(dst) -> File.copy!(src, dst)
+          unedited?(dst, old_manifest[name]) and sha256(dst) != sha -> File.copy!(src, dst)
+          true -> :ok
         end
 
-      if copied != [], do: Logger.info("[workshop] copied #{inspect(copied)} into #{dest}")
-    else
-      Logger.info("[workshop] no shipped notebooks at #{source}, skipping sync")
-    end
+        {name, sha}
+      end)
+
+    removed =
+      for {name, sha} <- old_manifest, not Map.has_key?(new_manifest, name) do
+        dst = Path.join(dest, name)
+        if unedited?(dst, sha), do: File.rm(dst)
+        dst
+      end
+
+    File.write!(manifest_path, JSON.encode!(new_manifest))
+    {shipped, removed}
   rescue
-    e -> Logger.warning("[workshop] notebook sync failed: #{Exception.message(e)}")
+    e ->
+      Logger.warning("[workshop] notebook sync failed: #{Exception.message(e)}")
+      {[], []}
   end
 
-  # Starred notebooks show newest first and re-starring is a no-op, so
-  # star in reverse order to list 00 first.
-  defp star_notebooks do
-    dest = notebooks_dest()
+  defp unedited?(path, shipped_sha), do: shipped_sha != nil and sha256(path) == shipped_sha
 
-    if Process.whereis(Livebook.NotebookManager) && File.dir?(dest) do
-      for name <-
-            dest
-            |> File.ls!()
-            |> Enum.filter(&String.ends_with?(&1, ".livemd"))
-            |> Enum.sort(:desc) do
-        path = Path.join(dest, name)
+  defp sha256(path), do: :crypto.hash(:sha256, File.read!(path)) |> Base.encode16(case: :lower)
+
+  # Starred notebooks show newest first, and re-starring keeps an entry
+  # where it is, so unstar the shipped ones and star them again in reverse
+  # order: 00 comes out on top.
+  defp star_notebooks({shipped, removed}) do
+    if Process.whereis(Livebook.NotebookManager) do
+      dest = notebooks_dest()
+
+      gone =
+        for %{file: file} <- Livebook.NotebookManager.starred_notebooks(),
+            String.starts_with?(file.path, dest),
+            not File.exists?(file.path),
+            do: file.path
+
+      shipped_paths = Enum.map(shipped, &Path.join(dest, &1))
+
+      for path <- Enum.uniq(removed ++ gone ++ shipped_paths) do
+        Livebook.NotebookManager.remove_starred_notebook(Livebook.FileSystem.File.local(path))
+      end
+
+      for name <- Enum.sort(shipped, :desc),
+          path = Path.join(dest, name),
+          File.exists?(path) do
         file = Livebook.FileSystem.File.local(path)
         Livebook.NotebookManager.add_starred_notebook(file, notebook_title(path, name))
       end
