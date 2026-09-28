@@ -1,0 +1,64 @@
+# Wi-Fi
+
+The phone reaches your laptop over USB, but the internet (to download
+the AI models, for example) goes over Wi-Fi. Nerves configures
+networking with [VintageNet](https://hexdocs.pm/vintage_net);
+`VintageNetWiFi`'s `quick_` functions cover the common cases (not
+enterprise networks). The phone remembers the network after a reboot.
+
+This follows the "Configure WiFi" notebook of the official
+[Nerves Livebook](https://github.com/nerves-livebook/nerves_livebook).
+If the firmware was built with the venue's network (see below), the
+phone is already connected and you can skip to the last cell.
+
+## Pick a network
+
+First, the networks the phone can see. The first scan after boot can come
+back empty; run it again if yours is missing.
+
+```elixir
+networks = VintageNetWiFi.quick_scan()
+
+Kino.DataTable.new(networks,
+  name: "Wi-Fi networks",
+  keys: [:ssid, :signal_percent, :frequency, :flags]
+)
+```
+
+Pick your network and type its password (leave it empty for an open
+network):
+
+```elixir
+if networks == [] do
+  raise "No networks found yet: run the scan above again."
+end
+
+ssid_input =
+  Kino.Input.select("Network", Enum.map(networks, &{&1.ssid, &1.ssid}))
+  |> Kino.render()
+
+password_input = Kino.Input.password("Password")
+```
+
+## Connect
+
+Then connect:
+
+```elixir
+VintageNetWiFi.quick_configure(Kino.Input.read(ssid_input), Kino.Input.read(password_input))
+```
+
+After a few seconds this should say `:internet`:
+
+```elixir
+VintageNet.get(["connection"])
+```
+
+## Building the firmware with the venue's network
+
+A workshop organiser can build the firmware with the venue's Wi-Fi, so
+every phone joins it on first boot:
+
+```sh
+FP3_WIFI_SSID="venue-network" FP3_WIFI_PASSPHRASE="secret" mix firmware
+```
