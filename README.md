@@ -46,8 +46,7 @@ and the QMI client the modem notebook uses), plus the kernel's LED
 interface and the system's `rumble` tool for the vibrator, and
 `input_event` for the touchscreen and buttons. `ex_audio`
 sets up the loudspeaker route and `ex_qbootctl` marks each boot slot
-successful. The microphone and earpiece aren't supported by the kernel
-yet.
+successful.
 
 ## Models
 
@@ -78,8 +77,8 @@ mix deps.get
 mix firmware
 ```
 
-The first build compiles `nerves_system_fp3` from source, which takes a
-long time.
+The first build downloads the prebuilt `nerves_system_fp3` from its
+GitHub release (about 360 MB).
 
 Cellular data is off unless you pass the SIM's APN at build time, for
 example `FP3_APN=internet.be mix firmware`. That adds the modem's QMI

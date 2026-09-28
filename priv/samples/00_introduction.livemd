@@ -35,14 +35,12 @@ out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
 | GPS | `ExLocation` | 07 |
 | Modem (IMEI, network, signal) | `QMI` | 08 |
 | Bluetooth LE | `BlueHeron` | 09 |
-| Loudspeaker | `ExAudio`, `aplay` | 10 |
+| Loudspeaker, microphone | `ExAudio`, `aplay`, `arecord` | 10, 12 |
 | Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 11 |
 | AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 12 |
 
-Not available yet: the microphone and the earpiece, which need a system
-image whose kernel drives their audio codec (the WCD9335), and classic
-Bluetooth (only Bluetooth LE is supported). Wi-Fi is set up from the
-Wi-Fi notebook.
+Not available yet: classic Bluetooth (only Bluetooth LE is supported). Wi-Fi
+is set up from the Wi-Fi notebook.
 
 ## How it boots
 

@@ -103,12 +103,13 @@ defmodule NervesLivebookFP3.MixProject do
       {:ex_location, github: "mlainez/ex_location", override: true},
       {:blue_heron, github: "mlainez/blue_heron", targets: :nerves_system_fp3},
 
-      # ---------------- The nerves_system_fp3 (compiled here) ----------------
+      # ---------------- The nerves_system_fp3 ----------------
+      # The prebuilt system comes from the tag's GitHub release.
       {:nerves_system_fp3,
        github: "mlainez/nerves_system_fp3",
+       tag: "v0.2.1",
        runtime: false,
-       targets: :nerves_system_fp3,
-       nerves: [compile: true]}
+       targets: :nerves_system_fp3}
     ]
   end
 
