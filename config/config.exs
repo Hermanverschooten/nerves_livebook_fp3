@@ -110,13 +110,18 @@ config :nerves_ai, :models,
 # Scenic's asset library (fonts); see lib/nerves_livebook_fp3/assets.ex.
 config :scenic, :assets, module: NervesLivebookFP3.Assets
 
-# First-boot F2FS grow of the /root partition (idempotent — the
-# resizer reports :already_grown once the FS fills the partition).
-# Keys and app namespace must match NervesDataResize.run/1, which
-# reads `config :nerves_data_resize, :config`.
+# First-boot grow of the /root partition and its F2FS (idempotent: the
+# resizer reports :already_grown once the FS fills userdata). A phone
+# flashed with fastboot keeps the image's partition size, so the
+# partition itself is grown too, by the system's ops.fw grow-app task.
 config :nerves_data_resize, :config,
   partition: "/dev/mmcblk0p62p3",
   mount_point: "/root",
-  mount_opts: "nodev"
+  mount_opts: "nodev",
+  grow_partition: [
+    disk: "/dev/mmcblk0p62",
+    ops_fw: "/usr/share/fwup/ops.fw",
+    task: "grow-app"
+  ]
 
 import_config "#{Mix.target()}.exs"
