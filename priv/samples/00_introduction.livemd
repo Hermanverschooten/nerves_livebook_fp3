@@ -39,8 +39,10 @@ out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
 | Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 11 |
 | AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 12 |
 
-Not available yet: classic Bluetooth (only Bluetooth LE is supported). Wi-Fi
-is set up from the Wi-Fi notebook.
+Not available yet: classic Bluetooth. The radio supports it, but this
+firmware drives Bluetooth with BlueHeron, which only speaks Bluetooth LE,
+so Bluetooth headphones, call headsets and serial adapters won't work.
+Wi-Fi is set up from the Wi-Fi notebook.
 
 ## How it boots
 

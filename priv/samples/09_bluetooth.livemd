@@ -16,8 +16,9 @@ between: BlueHeron sends the raw HCI commands itself.
 | `BlueHeron` | Scanning, advertising, GATT services |
 
 This notebook covers Bluetooth **LE** (low energy): beacons, sensors,
-fitness trackers, phone apps. Classic Bluetooth (headsets, keyboards)
-isn't supported.
+fitness trackers, phone apps. Classic Bluetooth (headphones, call
+headsets, serial adapters) isn't available: the chip supports it, but
+BlueHeron only speaks Bluetooth LE.
 
 Install a BLE scanner on your own phone to follow along, for example
 **nRF Connect** (Android and iOS).
