@@ -1,27 +1,49 @@
-# Loudspeaker
+# Audio
 
 ## Overview
 
-The loudspeaker is driven through the phone's audio DSP. The microphone
-and the earpiece aren't supported by the kernel yet.
+The phone has three audio parts:
 
-## Route audio to the loudspeaker
+* the **loudspeaker**, a swappable module with its own amplifier,
+* the **earpiece**, the small speaker you hold to your ear during a call,
+* the **microphone**.
 
-`ExAudio` sets ALSA mixer controls. At boot the firmware already enables
-this route for the Fairphone 3+; running it again is harmless.
+The earpiece and the microphone go through the WCD9335 audio codec. All
+three are driven through the phone's audio DSP. Sound is played on
+`plughw:0,0` and recorded from `hw:0,1`; ALSA mixer controls decide where
+it goes.
+
+`ExAudio` sets those controls. This helper applies a list of them and
+shows the result of each one:
 
 ```elixir
-ExAudio.cset("QUIN_MI2S_RX Audio Mixer MultiMedia1", :on)
+set = fn controls ->
+  for {name, value} <- controls, do: {name, ExAudio.cset(name, value)}
+end
 ```
 
-On a Fairphone 3+ the amplifier also has an on/off switch (the Fairphone
-3 amplifier doesn't, so this returns an error there):
+## Loudspeaker
+
+### Route audio to the loudspeaker
+
+At boot the firmware already enables this route for the Fairphone 3+.
+Run it again to come back from the earpiece.
 
 ```elixir
-ExAudio.cset("Speaker Switch", :on)
+speaker = [
+  {"Earpiece Switch", :off},
+  {"SLIMBUS_0_RX Audio Mixer MultiMedia1", :off},
+  {"QUIN_MI2S_RX Audio Mixer MultiMedia1", :on},
+  {"Speaker Switch", :on}
+]
+
+set.(speaker)
 ```
 
-## Play a tone
+Only the Fairphone 3+ amplifier has a `Speaker Switch`, so that line
+returns an error on a Fairphone 3.
+
+### Play a tone
 
 Generate one second of a 440 Hz tone, save it as a WAV file and play it
 with `aplay`.
@@ -42,7 +64,7 @@ System.cmd("aplay", ["-D", "plughw:0,0", "/tmp/tone.wav"], stderr_to_stdout: tru
 
 Change `volume` (0.0 to 1.0) and run it again.
 
-## A short melody
+### A short melody
 
 ```elixir
 notes = [262, 294, 330, 349, 392, 440, 494, 523]
@@ -58,6 +80,108 @@ melody =
 
 InferAudio.Decoder.write_wav("/tmp/melody.wav", melody, sample_rate: rate)
 System.cmd("aplay", ["-D", "plughw:0,0", "/tmp/melody.wav"], stderr_to_stdout: true)
+```
+
+## Earpiece
+
+### Route audio to the earpiece
+
+This turns the loudspeaker off and sends the same playback device to the
+earpiece instead.
+
+```elixir
+earpiece = [
+  {"Speaker Switch", :off},
+  {"QUIN_MI2S_RX Audio Mixer MultiMedia1", :off},
+  {"SLIMBUS_0_RX Audio Mixer MultiMedia1", :on},
+  {"SLIM RX0 MUX", "AIF_MIX1_PB"},
+  {"RX INT0_1 MIX1 INP0", "RX0"},
+  {"RX INT0 DEM MUX", "CLSH_DSM_OUT"},
+  {"RX0 Digital Volume", 84},
+  {"EAR PA Volume", 4},
+  {"Earpiece Switch", :on}
+]
+
+set.(earpiece)
+```
+
+### Listen
+
+The earpiece is quiet: hold the top of the phone to your ear, then run
+this to play the melody again.
+
+```elixir
+System.cmd("aplay", ["-D", "plughw:0,0", "/tmp/melody.wav"], stderr_to_stdout: true)
+```
+
+Run the loudspeaker route above to switch back.
+
+## Microphone
+
+### Route the microphone
+
+This connects the phone's main microphone to the recording device.
+
+```elixir
+microphone = [
+  {"MultiMedia2 Mixer SLIMBUS_0_TX", :on},
+  {"SLIM TX7 MUX", "DEC7"},
+  {"ADC MUX7", "DMIC"},
+  {"DMIC MUX7", "DMIC1"},
+  {"AIF1_CAP Mixer SLIM TX7", :on}
+]
+
+set.(microphone)
+```
+
+### Record
+
+Records 5 seconds. Talk, clap or whistle while it runs.
+
+```elixir
+arecord = fn seconds, path ->
+  System.cmd("arecord", ~w(-D hw:0,1 -f S16_LE -r 48000 -c 1 -d #{seconds} #{path}),
+    stderr_to_stdout: true
+  )
+end
+
+# The first capture after boot returns silence; a short one wakes the path up.
+arecord.(1, "/tmp/warmup.wav")
+IO.puts("Recording for 5 seconds...")
+arecord.(5, "/tmp/me.wav")
+```
+
+### How loud was it?
+
+The recording is split into tenths of a second, and each bar shows the
+loudest sample in that slice.
+
+```elixir
+{:ok, %{samples: samples}} = InferAudio.Decoder.decode_file("/tmp/me.wav")
+
+samples
+|> Nx.abs()
+|> Nx.to_flat_list()
+|> Enum.chunk_every(4_800)
+|> Enum.map(fn slice ->
+  peak = Enum.max(slice)
+  String.duplicate("█", round(peak * 50)) <> " #{Float.round(peak, 2)}"
+end)
+|> Enum.join("\n")
+|> IO.puts()
+```
+
+A silent room stays near 0; speaking close to the phone reaches 0.3 or
+more.
+
+### Play it back
+
+Plays the recording on the loudspeaker. Route it to the earpiece first
+to hear it there instead.
+
+```elixir
+set.(speaker)
+System.cmd("aplay", ["-D", "plughw:0,0", "/tmp/me.wav"], stderr_to_stdout: true)
 ```
 
 ## Play your own file

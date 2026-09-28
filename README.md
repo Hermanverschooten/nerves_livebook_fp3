@@ -31,7 +31,7 @@ edge-AI stack and the Fairphone 3 hardware libraries loaded.
 | `07_gps.livemd` | Satellites in view and position fixes |
 | `08_modem.livemd` | IMEI, operating mode, home network, signal strength |
 | `09_bluetooth.livemd` | Scan for BLE devices, advertise the phone, share its battery level over GATT |
-| `10_audio.livemd` | Loudspeaker: tones, melodies, WAV files |
+| `10_audio.livemd` | Loudspeaker, earpiece and microphone: tones, recording, playback |
 | `11_screen_touch_buttons.livemd` | Draw on the screen, touch input, volume and power buttons |
 | `12_ai_on_the_phone.livemd` | The AI stack, then a ladder: Nx tensors and NEON speed, an FFT, YOLO object detection, Whisper speech to text, TinyLlama chat |
 
