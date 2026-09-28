@@ -1,0 +1,140 @@
+# Battery and charging
+
+## Overview
+
+Linux describes every power source under `/sys/class/power_supply`, one
+directory per supply and one small text file per value. The phone has
+three:
+
+| Supply | What it is |
+|---|---|
+| `qg-battery` | The battery's fuel gauge: level, voltage, current, temperature |
+| `pmi632-charger` | The charger in the PMI632 power chip |
+| `tcpm-source-psy-…` | The USB-C port |
+
+```elixir
+File.ls!("/sys/class/power_supply")
+```
+
+## Reading a value
+
+Each value is a file. This helper reads one and turns numbers into
+integers:
+
+```elixir
+read = fn supply, name ->
+  [dir] = Path.wildcard("/sys/class/power_supply/#{supply}*")
+
+  case File.read(Path.join(dir, name)) do
+    {:ok, text} ->
+      text = String.trim(text)
+
+      case Integer.parse(text) do
+        {number, ""} -> number
+        _ -> text
+      end
+
+    {:error, reason} ->
+      {:error, reason}
+  end
+end
+
+read.("qg-battery", "capacity")
+```
+
+## The battery at a glance
+
+The kernel reports voltages in microvolts (µV), currents in microamps
+(µA) and the temperature in tenths of a degree.
+
+```elixir
+%{
+  level: "#{read.("qg-battery", "capacity")} %",
+  status: read.("qg-battery", "status"),
+  health: read.("qg-battery", "health"),
+  voltage: "#{Float.round(read.("qg-battery", "voltage_now") / 1_000_000, 2)} V",
+  current: "#{div(read.("qg-battery", "current_now"), 1000)} mA",
+  temperature: "#{read.("qg-battery", "temp") / 10} °C",
+  technology: read.("qg-battery", "technology")
+}
+```
+
+`status` is `"Charging"`, `"Discharging"`, `"Not charging"` or `"Full"`.
+
+## Is it plugged in?
+
+```elixir
+%{
+  cable_plugged_in: read.("pmi632-charger", "online") == 1,
+  charger_status: read.("pmi632-charger", "status"),
+  charger_input: "#{Float.round(read.("pmi632-charger", "voltage_now") / 1_000_000, 2)} V",
+  usb_c_mode: read.("tcpm-source-psy", "usb_type")
+}
+```
+
+In `usb_c_mode` the value in brackets is the one in use.
+
+## How long will it last?
+
+The battery was designed to hold 3000 mAh. The level tells how much of
+that is left, and the average current tells how fast it is going in or
+out. Dividing one by the other gives a rough time.
+
+```elixir
+design_mah = div(read.("qg-battery", "charge_full_design"), 1000)
+level = read.("qg-battery", "capacity")
+current_ma = abs(div(read.("qg-battery", "current_avg"), 1000))
+status = read.("qg-battery", "status")
+
+left_mah = design_mah * level / 100
+
+hours =
+  cond do
+    current_ma == 0 -> nil
+    status == "Charging" -> (design_mah - left_mah) / current_ma
+    true -> left_mah / current_ma
+  end
+
+case {status, hours} do
+  {_, nil} -> "No current flowing right now."
+  {"Charging", h} -> "About #{Float.round(h, 1)} hours to full."
+  {_, h} -> "About #{Float.round(h, 1)} hours left at the current drain."
+end
+```
+
+This is an estimate: an ageing battery holds less than its design
+capacity, and the charger slows down as the battery gets full.
+
+## Live view
+
+Plug and unplug the USB cable while this runs for thirty seconds.
+
+```elixir
+frame = Kino.Frame.new() |> Kino.render()
+
+# 30 rounds; each reads the battery, then waits one second.
+for _round <- 1..30 do
+  text =
+    "#{read.("qg-battery", "capacity")} %   " <>
+      "#{read.("qg-battery", "status")}   " <>
+      "#{div(read.("qg-battery", "current_now"), 1000)} mA   " <>
+      "#{Float.round(read.("qg-battery", "voltage_now") / 1_000_000, 2)} V"
+
+  Kino.Frame.render(frame, Kino.Markdown.new("`#{text}`"))
+  Process.sleep(1000)
+end
+
+:done
+```
+
+## Everything the kernel reports
+
+```elixir
+dir = hd(Path.wildcard("/sys/class/power_supply/qg-battery"))
+
+for name <- Enum.sort(File.ls!(dir)), File.regular?(Path.join(dir, name)), name != "uevent" do
+  {name, read.("qg-battery", name)}
+end
+```
+
+Try the same with `"pmi632-charger"`.

@@ -29,13 +29,14 @@ out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
 | Wi-Fi | `VintageNetWiFi` | 01 |
 | Notification LED, flashlight, vibrator | `/sys/class/leds`, `rumble` | 02 |
 | Sensors | `ExQcomSmgr` | 03 |
-| Cameras (stills, H.264 stream) | `Fp3Camera` | 04 |
-| NFC tags | `ExNfc` | 05 |
-| GPS | `ExLocation` | 06 |
-| Modem (IMEI, network, signal) | `QMI` | 07 |
-| Loudspeaker | `ExAudio`, `aplay` | 08 |
-| Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 09 |
-| AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 10 |
+| Battery and charging | `/sys/class/power_supply` | 04 |
+| Cameras (stills, H.264 stream) | `Fp3Camera` | 05 |
+| NFC tags | `ExNfc` | 06 |
+| GPS | `ExLocation` | 07 |
+| Modem (IMEI, network, signal) | `QMI` | 08 |
+| Loudspeaker | `ExAudio`, `aplay` | 09 |
+| Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 10 |
+| AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 11 |
 
 Not available yet: the microphone and the earpiece, which need a system
 image whose kernel drives their audio codec (the WCD9335), and

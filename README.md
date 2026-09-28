@@ -25,13 +25,14 @@ edge-AI stack and the Fairphone 3 hardware libraries loaded.
 | `01_wifi.livemd` | Connect the phone to Wi-Fi |
 | `02_led_flash_vibrator.livemd` | RGB notification LED, flashlight, vibrator |
 | `03_sensors.livemd` | Accelerometer, gyroscope, magnetometer, proximity |
-| `04_cameras.livemd` | Photos from both cameras, tuning the picture and focus, H.264 video stream |
-| `05_nfc.livemd` | Detect NFC tags and contactless cards |
-| `06_gps.livemd` | Satellites in view and position fixes |
-| `07_modem.livemd` | IMEI, operating mode, home network, signal strength |
-| `08_audio.livemd` | Loudspeaker: tones, melodies, WAV files |
-| `09_screen_touch_buttons.livemd` | Draw on the screen, touch input, volume and power buttons |
-| `10_ai_on_the_phone.livemd` | The AI stack, then a ladder: Nx tensors and NEON speed, an FFT, YOLO object detection, Whisper speech to text, TinyLlama chat |
+| `04_battery.livemd` | Battery level, charging status, voltage, current, temperature |
+| `05_cameras.livemd` | Photos from both cameras, tuning the picture and focus, H.264 video stream |
+| `06_nfc.livemd` | Detect NFC tags and contactless cards |
+| `07_gps.livemd` | Satellites in view and position fixes |
+| `08_modem.livemd` | IMEI, operating mode, home network, signal strength |
+| `09_audio.livemd` | Loudspeaker: tones, melodies, WAV files |
+| `10_screen_touch_buttons.livemd` | Draw on the screen, touch input, volume and power buttons |
+| `11_ai_on_the_phone.livemd` | The AI stack, then a ladder: Nx tensors and NEON speed, an FFT, YOLO object detection, Whisper speech to text, TinyLlama chat |
 
 Notebooks ship in `priv/samples` and are copied to
 `/data/livebook/notebooks` at boot, then starred so they appear on
