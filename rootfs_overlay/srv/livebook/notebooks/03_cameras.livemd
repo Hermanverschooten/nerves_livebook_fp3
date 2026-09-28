@@ -5,17 +5,21 @@ cameras.
 
 ## Which sensors are fitted?
 
+`setup/1` configures a camera's pipeline; `info/1` then reports the sensor.
+
 ```elixir
+:ok = Fp3Camera.setup(:rear)
 Fp3Camera.info(:rear)
 ```
 
 ```elixir
+:ok = Fp3Camera.setup(:front)
 Fp3Camera.info(:front)
 ```
 
 ## Take a photo
 
-A full-resolution still takes a few seconds.
+A full-resolution still (12 MP on the rear) takes about 30 seconds.
 
 ```elixir
 {:ok, jpeg} = Fp3Camera.snap_bytes(:rear)
