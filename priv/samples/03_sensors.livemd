@@ -1,5 +1,7 @@
 # Onboard sensors
 
+## Overview
+
 The accelerometer, gyroscope, magnetometer and proximity sensor run on
 the phone's sensor DSP. `ExQcomSmgr` keeps the latest reading of each.
 

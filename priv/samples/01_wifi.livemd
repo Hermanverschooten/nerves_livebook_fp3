@@ -1,5 +1,7 @@
 # Wi-Fi
 
+## Overview
+
 The phone reaches your laptop over USB, but the internet (to download
 the AI models, for example) goes over Wi-Fi. Nerves configures
 networking with [VintageNet](https://hexdocs.pm/vintage_net);

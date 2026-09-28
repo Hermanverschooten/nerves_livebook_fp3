@@ -1,5 +1,7 @@
 # GPS
 
+## Overview
+
 `ExLocation` asks the modem's GNSS engine for a position once per second.
 It needs the modem firmware running, and a clear view of the sky: go
 outside or sit by a window. The first fix can take a few minutes.

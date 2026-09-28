@@ -1,5 +1,7 @@
 # AI on the phone
 
+## Overview
+
 This notebook climbs a ladder: from plain tensor maths, to signal
 processing, to three machine-learning models of increasing size, all
 running on the phone's CPU with no GPU or cloud service. It builds on

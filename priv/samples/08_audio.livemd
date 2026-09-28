@@ -1,5 +1,7 @@
 # Loudspeaker
 
+## Overview
+
 The loudspeaker is driven through the phone's audio DSP. The microphone
 and the earpiece aren't supported by the kernel yet.
 

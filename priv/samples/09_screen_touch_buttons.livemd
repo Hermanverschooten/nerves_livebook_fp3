@@ -1,5 +1,7 @@
 # Screen, touch and buttons with Scenic
 
+## Overview
+
 [Scenic](https://hexdocs.pm/scenic) is an Elixir UI framework. A *scene*
 describes what's on screen as a *graph* of primitives (text, rectangles,
 circles…) and receives input: touches and button presses.
