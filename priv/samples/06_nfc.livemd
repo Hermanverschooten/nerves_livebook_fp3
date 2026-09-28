@@ -19,27 +19,44 @@ ExNfc.list_devices()
 
 ## Detect tags
 
-Run this cell, then hold a tag or a contactless card against the back of
-the phone. It listens for 30 seconds.
+Run this cell, then hold a tag or a contactless card flat against the
+back of the phone, over the lower half of the battery. The antenna is
+there, not at the top of the phone. It listens for 30 seconds.
 
 ```elixir
 ExNfc.subscribe()
 frame = Kino.Frame.new() |> Kino.render()
 
-# 30 rounds; each waits up to 1 second for a message from ExNfc.
-for _round <- 1..30 do
-  receive do
-    {ExNfc, :tag_arrived, tag} ->
-      Kino.Frame.append(frame, Kino.Markdown.new("Tag `#{tag.uid_hex}` (#{tag.protocol})"))
+deadline = System.monotonic_time(:millisecond) + 30_000
 
-    {ExNfc, _other, _} ->
-      :ok
-  after
-    1_000 -> :ok
+# One tap produces a burst of arrivals a few milliseconds apart, so a tag
+# counts as back only after it has been out of sight for a second.
+# last_seen maps each UID to the time it was last detected.
+listen = fn listen, last_seen ->
+  now = System.monotonic_time(:millisecond)
+
+  if now < deadline do
+    receive do
+      {ExNfc, :tag_arrived, tag} ->
+        seen_at = Map.get(last_seen, tag.uid_hex)
+
+        if seen_at == nil or now - seen_at >= 1_000 do
+          Kino.Frame.append(frame, Kino.Markdown.new("Tag `#{tag.uid_hex}` (#{tag.protocol})"))
+        end
+
+        listen.(listen, Map.put(last_seen, tag.uid_hex, now))
+
+      {ExNfc, _other, _} ->
+        listen.(listen, last_seen)
+    after
+      deadline - now -> :ok
+    end
   end
 end
 
+listen.(listen, %{})
 ExNfc.unsubscribe()
 ```
 
-Each tag is reported with its UID and protocol.
+Each tag is reported once, with its UID and protocol. Take it away for
+a second and tap again to see it reported again.
