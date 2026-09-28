@@ -54,8 +54,29 @@ modem =
     []
   end
 
+# wlan0 is always configured, so wpa_supplicant runs and the Wi-Fi
+# notebook can scan. Build with FP3_WIFI_SSID (and FP3_WIFI_PASSPHRASE for
+# a protected network) and every phone joins the workshop venue's network
+# on first boot. A network set later from the Wi-Fi notebook is saved and
+# takes precedence. The credentials end up in the image.
+wifi_networks =
+  case {System.get_env("FP3_WIFI_SSID"), System.get_env("FP3_WIFI_PASSPHRASE")} do
+    {nil, _} -> []
+    {ssid, passphrase} when passphrase in [nil, ""] -> [%{ssid: ssid, key_mgmt: :none}]
+    {ssid, passphrase} -> [%{ssid: ssid, key_mgmt: :wpa_psk, psk: passphrase}]
+  end
+
+wifi = [
+  {"wlan0",
+   %{
+     type: VintageNetWiFi,
+     vintage_net_wifi: %{networks: wifi_networks},
+     ipv4: %{method: :dhcp}
+   }}
+]
+
 # Networking: USB gadget ethernet to the laptop, plus wired ethernet
-# (USB-C adapter) and optionally the modem.
+# (USB-C adapter), and optionally Wi-Fi and the modem.
 config :vintage_net,
   regulatory_domain: "BE",
   power_managers:
@@ -64,7 +85,7 @@ config :vintage_net,
     [
       {"usb0", %{type: VintageNetDirect}},
       {"eth0", %{type: VintageNetEthernet, ipv4: %{method: :dhcp}}}
-    ] ++ modem
+    ] ++ wifi ++ modem
 
 # ALSA routing for the FP3+ loudspeaker (TAS2557 amp on QUIN MI2S).
 # The original FP3's amp needs different controls.

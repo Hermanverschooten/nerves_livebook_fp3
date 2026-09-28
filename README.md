@@ -82,6 +82,11 @@ Cellular data is off unless you pass the SIM's APN at build time, for
 example `FP3_APN=internet.be mix firmware`. That adds the modem's QMI
 interface and `Fp3Modem.PowerManager` to the network config.
 
+For a workshop venue, build with its Wi-Fi so every phone joins it on
+first boot: `FP3_WIFI_SSID=venue FP3_WIFI_PASSPHRASE=secret mix firmware`
+(leave out the passphrase for an open network). The credentials end up
+in the image. People can pick another network with the Wi-Fi notebook.
+
 ### Flash a device
 
 The first install needs lk2nd on the boot partition and the firmware
