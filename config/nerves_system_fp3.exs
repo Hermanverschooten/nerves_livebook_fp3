@@ -112,3 +112,8 @@ config :livebook, LivebookWeb.Endpoint,
     :sha512
     |> :crypto.hash("nerves_livebook_fp3-not-a-secret-key-base")
     |> Base.encode64()
+
+# Bluetooth LE through the kernel's hci0 (the WCN3680 behind btqcomsmd).
+# BlueHeron takes the controller over exclusively, so bluetoothd must not
+# run.
+config :blue_heron, transport: [type: :hci_socket, device: 0]

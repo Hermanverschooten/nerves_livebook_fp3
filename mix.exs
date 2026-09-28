@@ -101,6 +101,7 @@ defmodule NervesLivebookFP3.MixProject do
       {:fp3_modem, github: "mlainez/fp3_modem", override: true},
       {:ex_nfc, github: "mlainez/ex_nfc", override: true},
       {:ex_location, github: "mlainez/ex_location", override: true},
+      {:blue_heron, github: "mlainez/blue_heron", targets: :nerves_system_fp3},
 
       # ---------------- The nerves_system_fp3 (compiled here) ----------------
       {:nerves_system_fp3,
