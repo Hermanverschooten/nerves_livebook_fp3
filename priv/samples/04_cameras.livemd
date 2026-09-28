@@ -5,15 +5,13 @@ cameras.
 
 ## Which sensors are fitted?
 
-`setup/1` configures a camera's pipeline; `info/1` then reports the sensor.
+The camera modules can be swapped, so ask which sensor each slot holds:
 
 ```elixir
-:ok = Fp3Camera.setup(:rear)
 Fp3Camera.info(:rear)
 ```
 
 ```elixir
-:ok = Fp3Camera.setup(:front)
 Fp3Camera.info(:front)
 ```
 
@@ -31,6 +29,93 @@ Faster and smaller, with 2×2 binning:
 ```elixir
 {:ok, jpeg} = Fp3Camera.snap_bytes(:front, binned: true)
 Kino.Image.new(jpeg, :jpeg)
+```
+
+## Tune the picture
+
+On Android, a dedicated image processor and years of per-sensor tuning
+turn the sensor's raw data into a photo. Here that work happens in
+software, in the `cam-snap` program: white balance, demosaicing, a tone
+curve, sharpening and noise reduction. Every step has a setting, so you
+can tune it yourself.
+
+The sliders start at the default values. Change them, then run the next
+cell to take a quick (2×2-binned) photo with them:
+
+```elixir
+camera = Kino.Input.select("Camera", rear: "Rear", front: "Front")
+gamma = Kino.Input.range("Gamma: brightness of the mid-tones", min: 1.0, max: 3.0, step: 0.1, default: 2.2)
+contrast = Kino.Input.range("Contrast", min: 0.0, max: 1.0, step: 0.05, default: 0.35)
+saturation = Kino.Input.range("Saturation: colour strength", min: 0.0, max: 2.5, step: 0.1, default: 1.5)
+brightness = Kino.Input.range("Brightness", min: 0.5, max: 2.5, step: 0.1, default: 1.0)
+sharpen = Kino.Input.range("Sharpening (0 = off)", min: 0.0, max: 3.0, step: 0.1, default: 1.0)
+denoise = Kino.Input.range("Noise reduction (0 = off)", min: 0, max: 10, step: 1, default: 4)
+white_balance =
+  Kino.Input.select("White balance",
+    default: "Camera default",
+    auto: "Automatic (from the picture)",
+    fixed: "Fixed gains"
+  )
+
+warmth = Kino.Input.range("Warmth: extra red", min: 0.8, max: 1.3, step: 0.01, default: 1.05)
+
+# The rear camera's lens is moved by a motor; the front ones are fixed-focus.
+focus_mode = Kino.Input.select("Focus (rear camera)", auto: "Automatic", manual: "Manual")
+focus = Kino.Input.range("Manual focus: 0 = far away, 1023 = very close", min: 0, max: 1023, step: 1, default: 300)
+
+Kino.Layout.grid(
+  [camera, gamma, contrast, saturation, brightness, sharpen, denoise, white_balance, warmth,
+   focus_mode, focus],
+  columns: 2
+)
+```
+
+```elixir
+settings = [
+  gamma: Kino.Input.read(gamma),
+  contrast: Kino.Input.read(contrast),
+  saturation: Kino.Input.read(saturation),
+  brightness: Kino.Input.read(brightness),
+  sharpen: if(Kino.Input.read(sharpen) == 0, do: false, else: Kino.Input.read(sharpen)),
+  denoise: round(Kino.Input.read(denoise)),
+  warm_bias: Kino.Input.read(warmth)
+]
+
+settings =
+  case Kino.Input.read(white_balance) do
+    :auto -> settings ++ [awb: true]
+    :fixed -> settings ++ [awb: false]
+    :default -> settings
+  end
+
+settings =
+  cond do
+    Kino.Input.read(camera) == :front -> settings
+    Kino.Input.read(focus_mode) == :auto -> settings ++ [focus: :auto]
+    true -> settings ++ [focus: round(Kino.Input.read(focus))]
+  end
+
+{:ok, jpeg} = Fp3Camera.snap_bytes(Kino.Input.read(camera), [binned: true] ++ settings)
+Kino.Image.new(jpeg, :jpeg)
+```
+
+`Fp3Camera.snap/3` documents more settings: `:exposure`, `:gain`,
+explicit white-balance gains (`wb: {r, g, b}`) and lens shading
+correction (`:lsc`). The cameras have no optical zoom.
+
+Happy with the result? Make it the default for this camera's photos and
+keep it across reboots:
+
+```elixir
+Fp3Camera.Config.put({Kino.Input.read(camera), :snap}, settings)
+Fp3Camera.Config.save()
+```
+
+To go back to the built-in values:
+
+```elixir
+Fp3Camera.Config.reset()
+Fp3Camera.Config.save()
 ```
 
 ## Stream video
