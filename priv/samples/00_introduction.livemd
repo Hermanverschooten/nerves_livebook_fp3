@@ -26,19 +26,21 @@ out |> String.split("\n") |> Enum.filter(&(&1 =~ "fp3-module-slots"))
 
 | Feature | Library | Notebook |
 |---|---|---|
-| Notification LED, flashlight, vibrator | `/sys/class/leds`, `rumble` | 01 |
-| Sensors | `ExQcomSmgr` | 02 |
-| Cameras (stills, H.264 stream) | `Fp3Camera` | 03 |
-| NFC tags | `ExNfc` | 04 |
-| GPS | `ExLocation` | 05 |
-| Modem (IMEI, network, signal) | `QMI` | 06 |
-| On-device LLM | `ArmAI.LlamaCandle` | 07 |
+| Wi-Fi | `VintageNetWiFi` | 01 |
+| Notification LED, flashlight, vibrator | `/sys/class/leds`, `rumble` | 02 |
+| Sensors | `ExQcomSmgr` | 03 |
+| Cameras (stills, H.264 stream) | `Fp3Camera` | 04 |
+| NFC tags | `ExNfc` | 05 |
+| GPS | `ExLocation` | 06 |
+| Modem (IMEI, network, signal) | `QMI` | 07 |
 | Loudspeaker | `ExAudio`, `aplay` | 08 |
-| Screen, touchscreen, buttons | `/dev/fb0`, `InputEvent` | 09 |
+| Screen, touchscreen, buttons | `Scenic`, `InputEvent` | 09 |
+| AI: Nx, object detection, speech to text, LLM chat | `nerves_ai` stack | 10 |
 
-Not available yet: the microphone and the earpiece (the kernel doesn't
-drive the audio codec they're connected to), and Wi-Fi/Bluetooth, which
-this firmware doesn't configure.
+Not available yet: the microphone and the earpiece, which need a system
+image whose kernel drives their audio codec (the WCD9335), and
+Bluetooth, which this firmware doesn't configure. Wi-Fi is set up from
+the Wi-Fi notebook.
 
 ## How it boots
 
@@ -108,8 +110,9 @@ fastboot flash userdata nerves_livebook_fp3.img
 fastboot reboot
 ```
 
-The first boot grows the data partition and, when the phone has internet
-access, downloads the models.
+The first boot grows the data partition to fill the phone's storage.
+The AI notebooks download their models when you first run them, so
+connect the phone to Wi-Fi (Wi-Fi notebook) before trying them.
 
 ## After that
 
