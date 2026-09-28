@@ -61,13 +61,13 @@ defmodule NervesLivebookFP3.Application do
 
     new_manifest =
       Map.new(shipped, fn name ->
-        src = Path.join(source, name)
+        content = source |> Path.join(name) |> File.read!() |> livebook_format()
         dst = Path.join(dest, name)
-        sha = sha256(src)
+        sha = sha256_of(content)
 
         cond do
-          not File.exists?(dst) -> File.copy!(src, dst)
-          unedited?(dst, old_manifest[name]) and sha256(dst) != sha -> File.copy!(src, dst)
+          not File.exists?(dst) -> File.write!(dst, content)
+          unedited?(dst, old_manifest[name]) and sha256(dst) != sha -> File.write!(dst, content)
           true -> :ok
         end
 
@@ -91,7 +91,18 @@ defmodule NervesLivebookFP3.Application do
 
   defp unedited?(path, shipped_sha), do: shipped_sha != nil and sha256(path) == shipped_sha
 
-  defp sha256(path), do: :crypto.hash(:sha256, File.read!(path)) |> Base.encode16(case: :lower)
+  defp sha256(path), do: path |> File.read!() |> sha256_of()
+
+  defp sha256_of(content), do: :crypto.hash(:sha256, content) |> Base.encode16(case: :lower)
+
+  # Livebook rewrites a notebook in its own format when it saves it.
+  # Shipping that format means a notebook opened and saved without
+  # changes still counts as unedited and keeps receiving updates.
+  defp livebook_format(markdown) do
+    {notebook, _warnings} = Livebook.LiveMarkdown.notebook_from_livemd(markdown)
+    {source, _warnings} = Livebook.LiveMarkdown.notebook_to_livemd(notebook)
+    source
+  end
 
   # Starred notebooks show newest first, and re-starring keeps an entry
   # where it is, so unstar the shipped ones and star them again in reverse
