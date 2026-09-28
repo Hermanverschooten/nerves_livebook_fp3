@@ -2,11 +2,10 @@
 
 ## Overview
 
-This notebook climbs a ladder: from plain tensor maths, to signal
-processing, to three machine-learning models of increasing size, all
-running on the phone's CPU with no GPU or cloud service. It builds on
-the earlier notebooks: Wi-Fi (01), the camera (04) and the speaker and
-microphone (08).
+This notebook climbs a ladder: from plain tensor maths to three
+machine-learning models of increasing size, all running on the phone's
+CPU with no GPU or cloud service. It builds on the earlier notebooks:
+Wi-Fi (01), the camera (05) and audio (10).
 
 ## The layers
 
@@ -122,61 +121,6 @@ CpuGovernor.with_performance(fn ->
     neon_ms: time_ms.(fn -> Nx.dot(neon, neon) end)
   }
 end)
-```
-
-## Frequencies in a sound
-
-A Fourier transform turns a signal into the frequencies it contains.
-This builds a quarter second of two notes (440 Hz and 1 200 Hz) and
-finds them again with `NxPrimitives.FFT.rfft/1`, which also runs on
-NEON.
-
-```elixir
-rate = 16_000
-n = 4096
-t = Nx.iota({n}, type: :f32) |> Nx.divide(rate)
-
-signal =
-  Nx.add(
-    Nx.sin(Nx.multiply(t, 2 * :math.pi() * 440)),
-    Nx.multiply(Nx.sin(Nx.multiply(t, 2 * :math.pi() * 1200)), 0.5)
-  )
-
-# rfft returns interleaved [re, im, re, im, ...] for n/2 + 1 frequencies.
-spectrum =
-  signal
-  |> NxPrimitives.FFT.rfft()
-  |> Nx.reshape({div(n, 2) + 1, 2})
-  |> Nx.pow(2)
-  |> Nx.sum(axes: [1])
-  |> Nx.sqrt()
-
-hz_per_bin = rate / n
-
-spectrum
-|> Nx.argsort(direction: :desc)
-|> Nx.slice([0], [2])
-|> Nx.to_list()
-|> Enum.map(&round(&1 * hz_per_bin))
-```
-
-The two strongest frequencies come out near 440 and 1 200 Hz (each bin
-is about 4 Hz wide). The spectrum up to 2 kHz:
-
-```elixir
-bins = round(2000 / hz_per_bin)
-values = spectrum |> Nx.slice([0], [bins]) |> Nx.to_list()
-peak = Enum.max(values)
-
-bars =
-  values
-  |> Enum.with_index()
-  |> Enum.map_join(fn {v, i} ->
-    h = v / peak * 200
-    ~s(<rect x="#{i * 2}" y="#{200 - h}" width="2" height="#{h}" fill="steelblue"/>)
-  end)
-
-Kino.HTML.new(~s(<svg viewBox="0 0 #{bins * 2} 200" style="width: 100%; height: 200px">#{bars}</svg>))
 ```
 
 ## Models: downloaded when you need them
