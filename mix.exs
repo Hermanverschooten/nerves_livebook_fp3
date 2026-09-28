@@ -117,7 +117,9 @@ defmodule NervesLivebookFP3.MixProject do
       cookie: "#{@app}_cookie",
       include_erts: &Nerves.Release.erts/0,
       steps: [&Nerves.Release.init/1, :assemble],
-      strip_beams: Mix.env() == :prod or [keep: ["Docs"]]
+      # Livebook runs doctests with ExUnit and shows docs in the editor.
+      applications: [ex_unit: :load],
+      strip_beams: [keep: ["Docs"]]
     ]
   end
 end
