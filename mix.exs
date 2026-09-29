@@ -2,7 +2,7 @@ defmodule NervesLivebookFP3.MixProject do
   use Mix.Project
 
   @app :nerves_livebook_fp3
-  @version "0.1.0"
+  @version "0.1.1"
 
   # Deterministic builds — same input, same firmware bytes.
   System.put_env("ERL_COMPILER_OPTIONS", "deterministic")
@@ -107,7 +107,7 @@ defmodule NervesLivebookFP3.MixProject do
       # The prebuilt system comes from the tag's GitHub release.
       {:nerves_system_fp3,
        github: "mlainez/nerves_system_fp3",
-       tag: "v0.2.1",
+       tag: "v0.2.2",
        runtime: false,
        targets: :nerves_system_fp3}
     ]
