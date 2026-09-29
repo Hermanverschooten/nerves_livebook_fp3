@@ -69,20 +69,29 @@ done
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf '\033[31mError: %s\033[0m\n' "$*" >&2; exit 1; }
 
-for tool in fastboot curl sha256sum; do
+for tool in fastboot curl; do
   command -v "$tool" >/dev/null || die "$tool is not installed"
 done
+
+# macOS ships shasum but not sha256sum.
+if command -v sha256sum >/dev/null; then
+  SHA256=(sha256sum)
+elif command -v shasum >/dev/null; then
+  SHA256=(shasum -a 256)
+else
+  die "sha256sum or shasum is required"
+fi
 
 # Download a pinned file into the cache and check its hash.
 fetch() {
   local url="$1" sha="$2" dest="$CACHE_DIR/$3"
   mkdir -p "$CACHE_DIR"
-  if [ ! -f "$dest" ] || ! echo "$sha  $dest" | sha256sum --check --status; then
+  if [ ! -f "$dest" ] || ! echo "$sha  $dest" | "${SHA256[@]}" --check --status; then
     echo "Downloading $url"
     curl -fsSL -o "$dest.part" "$url"
     mv "$dest.part" "$dest"
   fi
-  echo "$sha  $dest" | sha256sum --check --status || die "checksum mismatch for $dest"
+  echo "$sha  $dest" | "${SHA256[@]}" --check --status || die "checksum mismatch for $dest"
 }
 
 # fastboot prints variables on stderr as "name: value". An unknown
@@ -106,7 +115,9 @@ wait_for_phone() {
       serial=$(fastboot devices | awk -v s="$SERIAL" '$1 == s {print $1}')
     else
       serial=$(fastboot devices | awk '{print $1}' | while read -r s; do
-        case "$FLASHED" in *" $s "*) ;; *) echo "$s" ;; esac
+        # Leading "(" on patterns: bash 3.2 (macOS) otherwise ends the
+        # command substitution at the pattern's ")".
+        case "$FLASHED" in (*" $s "*) ;; (*) echo "$s" ;; esac
       done | head -n1)
     fi
     if [ -n "$serial" ]; then
