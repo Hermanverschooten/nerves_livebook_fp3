@@ -73,7 +73,7 @@ for tool in fastboot curl; do
   command -v "$tool" >/dev/null || die "$tool is not installed"
 done
 
-# macOS ships shasum but not sha256sum.
+# Older macOS has only shasum; newer macOS has a BSD sha256sum.
 if command -v sha256sum >/dev/null; then
   SHA256=(sha256sum)
 elif command -v shasum >/dev/null; then
@@ -82,16 +82,22 @@ else
   die "sha256sum or shasum is required"
 fi
 
+# Check a file's SHA-256. Compares the hash as a string because BSD
+# sha256sum and shasum don't share GNU's --check --status.
+sha_ok() {
+  [ -f "$2" ] && [ "$("${SHA256[@]}" "$2" | awk '{print $1}')" = "$1" ]
+}
+
 # Download a pinned file into the cache and check its hash.
 fetch() {
   local url="$1" sha="$2" dest="$CACHE_DIR/$3"
   mkdir -p "$CACHE_DIR"
-  if [ ! -f "$dest" ] || ! echo "$sha  $dest" | "${SHA256[@]}" --check --status; then
+  if ! sha_ok "$sha" "$dest"; then
     echo "Downloading $url"
     curl -fsSL -o "$dest.part" "$url"
     mv "$dest.part" "$dest"
   fi
-  echo "$sha  $dest" | "${SHA256[@]}" --check --status || die "checksum mismatch for $dest"
+  sha_ok "$sha" "$dest" || die "checksum mismatch for $dest"
 }
 
 # fastboot prints variables on stderr as "name: value". An unknown
